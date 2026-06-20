@@ -36,6 +36,13 @@ export interface LuckyScoreDetail {
   description: string;
 }
 
+export interface LuckyElementQi {
+  totals: Record<"tree" | "fire" | "earth" | "metal" | "water", number>;
+  percentages: Record<"tree" | "fire" | "earth" | "metal" | "water", number>;
+  missing: Array<"tree" | "fire" | "earth" | "metal" | "water">;
+  total: number;
+}
+
 export interface LuckyDay {
   id: string;
   rank: number;
@@ -69,6 +76,7 @@ export interface LuckyDay {
     branches: [string, string];
     pillarIndices: number[];
   };
+  elementQi: LuckyElementQi;
   jwabeop: Array<Array<{ stem: string; sipsin: string; unseong: string }>>;
   injongbeop: Array<{ category: string; yangStem: string; unseong: string }>;
   scoring: {

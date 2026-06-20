@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { calculateSaju } from "@orrery/core/saju";
-import { BRANCH_ELEMENT, STEM_INFO } from "@orrery/core/constants";
 import type { SajuResult } from "@orrery/core/types";
 
 import type { LuckyDay, LuckyScoreDetail } from "@/lib/lucky-day-types";
+import { calculateElementQi } from "@/lib/saju/element-qi";
 
 const MAX_RANGE_DAYS = 14;
 const PILLAR_NAMES = ["시주", "일주", "월주", "년주"];
@@ -99,42 +99,33 @@ function getDatesInclusive(fromUtc: number, toUtc: number) {
   return dates;
 }
 
-function countElements(result: SajuResult) {
-  const counts = {
-    tree: 0,
-    fire: 0,
-    earth: 0,
-    metal: 0,
-    water: 0,
-  };
-
-  for (const detail of result.pillars) {
-    counts[STEM_INFO[detail.pillar.stem].element] += 1;
-    counts[BRANCH_ELEMENT[detail.pillar.branch]] += 1;
-  }
-
-  return counts;
-}
-
 function scoreSaju(result: SajuResult) {
   const details: LuckyScoreDetail[] = [];
   let score = 55;
 
-  const elements = countElements(result);
-  const ideal = 8 / 5;
-  const balancePenalty = Object.values(elements).reduce(
-    (sum, count) => sum + Math.abs(count - ideal),
+  const elementQi = calculateElementQi(result);
+  const elementQiValues = [
+    elementQi.percentages.tree,
+    elementQi.percentages.fire,
+    elementQi.percentages.earth,
+    elementQi.percentages.metal,
+    elementQi.percentages.water,
+  ];
+  const balancePenalty = elementQiValues.reduce(
+    (sum, percentage) => sum + Math.abs(percentage - 20),
     0
   );
-  const balanceBonus = Math.round(Math.max(0, 22 - balancePenalty * 4));
-  const missingElements = Object.values(elements).filter((count) => count === 0).length;
+  const balanceBonus = Math.round(Math.max(0, 22 - balancePenalty * 0.32));
+  const missingElements = elementQi.missing.length;
 
   score += balanceBonus;
   score -= missingElements * 5;
   details.push({
     label: "오행 균형",
     value: balanceBonus - missingElements * 5,
-    description: `목화토금수 분포 ${Object.values(elements).join("/")}`,
+    description: `목화토금수 기도 ${elementQiValues
+      .map((value) => `${value.toFixed(1)}%`)
+      .join("/")}`,
   });
 
   const allPairRelations = [...result.relations.pairs.values()].flatMap((pair) => [
@@ -210,6 +201,12 @@ function scoreSaju(result: SajuResult) {
   return {
     score: Math.max(0, Math.min(100, Math.round(score))),
     details,
+    elementQi: {
+      totals: elementQi.totals,
+      percentages: elementQi.percentages,
+      missing: elementQi.missing,
+      total: elementQi.total,
+    },
   };
 }
 
@@ -268,6 +265,7 @@ function serializeCandidate(
     },
     specialSals: result.specialSals,
     gongmang: result.gongmang,
+    elementQi: scoring.elementQi,
     jwabeop: result.jwabeop,
     injongbeop: result.injongbeop,
     scoring: {

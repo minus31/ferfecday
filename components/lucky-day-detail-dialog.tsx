@@ -121,30 +121,30 @@ const BRANCH_KO: Record<string, string> = {
   "亥": "해",
 };
 
-type FiveElement = "wood" | "fire" | "earth" | "metal" | "water";
+type FiveElement = "tree" | "fire" | "earth" | "metal" | "water";
 
 const ELEMENT_KO: Record<FiveElement, string> = {
-  wood: "목",
+  tree: "목",
   fire: "화",
   earth: "토",
   metal: "금",
   water: "수",
 };
 
-const ELEMENT_ORDER: FiveElement[] = ["wood", "fire", "earth", "metal", "water"];
+const ELEMENT_ORDER: FiveElement[] = ["tree", "fire", "earth", "metal", "water"];
 const GENERATES: Record<FiveElement, FiveElement> = {
-  wood: "fire",
+  tree: "fire",
   fire: "earth",
   earth: "metal",
   metal: "water",
-  water: "wood",
+  water: "tree",
 };
 const CONTROLS: Record<FiveElement, FiveElement> = {
-  wood: "earth",
+  tree: "earth",
   earth: "water",
   water: "fire",
   fire: "metal",
-  metal: "wood",
+  metal: "tree",
 };
 
 function translate(value: string, table: Record<string, string>) {
@@ -184,7 +184,7 @@ function getElementClass(char: string) {
 }
 
 function getElement(char: string): FiveElement {
-  if ("甲乙寅卯".includes(char)) return "wood";
+  if ("甲乙寅卯".includes(char)) return "tree";
   if ("丙丁巳午".includes(char)) return "fire";
   if ("戊己辰戌丑未".includes(char)) return "earth";
   if ("庚辛申酉".includes(char)) return "metal";
@@ -192,7 +192,7 @@ function getElement(char: string): FiveElement {
 }
 
 function getElementFillClass(element: FiveElement) {
-  if (element === "wood") return "#22c55e";
+  if (element === "tree") return "#22c55e";
   if (element === "fire") return "#ef4444";
   if (element === "earth") return "#facc15";
   if (element === "metal") return "#d6d3d1";
@@ -315,24 +315,7 @@ function SajuChart({ day }: { day: LuckyDay }) {
 }
 
 function ElementQiChart({ day }: { day: LuckyDay }) {
-  const counts = ELEMENT_ORDER.reduce<Record<FiveElement, number>>(
-    (acc, element) => ({ ...acc, [element]: 0 }),
-    {
-      wood: 0,
-      fire: 0,
-      earth: 0,
-      metal: 0,
-      water: 0,
-    }
-  );
-
-  for (const pillar of day.pillars) {
-    counts[getElement(pillar.stem)] += 1;
-    counts[getElement(pillar.branch)] += 1;
-  }
-
   const dayElement = getElement(day.pillars[1].stem);
-  const total = Math.max(1, Object.values(counts).reduce((sum, count) => sum + count, 0));
   const radius = 12;
   const clockwiseElements = getClockwiseElementsFrom(dayElement);
   const positionSlots = [
@@ -348,39 +331,26 @@ function ElementQiChart({ day }: { day: LuckyDay }) {
       [element]: positionSlots[index],
     }),
     {
-      wood: positionSlots[0],
+      tree: positionSlots[0],
       fire: positionSlots[1],
       earth: positionSlots[2],
       metal: positionSlots[3],
       water: positionSlots[4],
     }
   );
-  const percentages = ELEMENT_ORDER.reduce<Record<FiveElement, number>>(
-    (acc, element) => ({
-      ...acc,
-      [element]: (counts[element] / total) * 100,
-    }),
-    {
-      wood: 0,
-      fire: 0,
-      earth: 0,
-      metal: 0,
-      water: 0,
-    }
-  );
   const generatedPaths: Array<[FiveElement, FiveElement]> = [
-    ["wood", "fire"],
+    ["tree", "fire"],
     ["fire", "earth"],
     ["earth", "metal"],
     ["metal", "water"],
-    ["water", "wood"],
+    ["water", "tree"],
   ];
   const controlledPaths: Array<[FiveElement, FiveElement]> = [
-    ["wood", "earth"],
+    ["tree", "earth"],
     ["earth", "water"],
     ["water", "fire"],
     ["fire", "metal"],
-    ["metal", "wood"],
+    ["metal", "tree"],
   ];
   const getTrimmedLine = (from: FiveElement, to: FiveElement, inset = 3) => {
     const start = positions[from];
@@ -488,7 +458,7 @@ function ElementQiChart({ day }: { day: LuckyDay }) {
 
           {clockwiseElements.map((element) => {
             const position = positions[element];
-            const percent = percentages[element];
+            const percent = day.elementQi.percentages[element];
             const fillHeight = (radius * 2 * Math.min(100, Math.max(0, percent))) / 100;
             const fillTop = position.y + radius - fillHeight;
 
@@ -539,6 +509,22 @@ function ElementQiChart({ day }: { day: LuckyDay }) {
             );
           })}
         </svg>
+      </div>
+
+      <div className="mt-4 grid grid-cols-5 gap-2 text-center">
+        {ELEMENT_ORDER.map((element) => (
+          <div key={element} className="rounded-md border bg-secondary/40 px-2 py-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {ELEMENT_KO[element]}
+            </p>
+            <p className="mt-1 text-sm font-semibold">
+              {day.elementQi.percentages[element].toFixed(1)}%
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {day.elementQi.totals[element].toFixed(2)}
+            </p>
+          </div>
+        ))}
       </div>
     </section>
   );
