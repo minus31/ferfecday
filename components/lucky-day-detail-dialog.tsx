@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import type { LuckyDaewoon, LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
@@ -581,6 +582,184 @@ function DaewoonChart({ day }: { day: LuckyDay }) {
   );
 }
 
+const ELEMENT_EN: Record<FiveElement, string> = {
+  tree: "Wood",
+  fire: "Fire",
+  earth: "Earth",
+  metal: "Metal",
+  water: "Water",
+};
+
+const ELEMENT_BAR_CLASS: Record<FiveElement, string> = {
+  tree: "bg-green-500",
+  fire: "bg-red-500",
+  earth: "bg-yellow-400",
+  metal: "bg-neutral-400",
+  water: "bg-blue-500",
+};
+
+const REPORT_THEMES = [
+  "Theme 1. 타고난 그릇과 기질 (일주론/12운성 성격)",
+  "Theme 2. 평생의 성공과 재능 (식재관/직업 적성)",
+  "Theme 3. 소형 업상대체 양육 솔루션 (건강/오감치료)",
+  "Theme 4. 인생의 타이밍과 변화의 나침반 (대운 분석)",
+];
+
+function elementLabelForChar(char: string) {
+  const element = getElement(char);
+  return `${ELEMENT_KO[element]}/${ELEMENT_EN[element]}`;
+}
+
+function ReportSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border bg-background p-4 sm:p-5">
+      <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function ReportSajuCombination({ day }: { day: LuckyDay }) {
+  return (
+    <ReportSection title="Step 1. 사주팔자 공식 (Saju Combination)">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {day.pillars.map((pillar) => (
+          <div key={pillar.name} className="min-w-0 space-y-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+              {pillar.name.replace("주", "")} ({pillar.name === "시주" ? "Hour" : pillar.name === "일주" ? "Day" : pillar.name === "월주" ? "Month" : "Year"})
+            </p>
+            <div className="space-y-1">
+              <p className="text-lg font-semibold">
+                {pillar.stem} <span className="text-sm text-muted-foreground">({elementLabelForChar(pillar.stem)})</span>
+              </p>
+              <p className="text-lg font-semibold">
+                {pillar.branch} <span className="text-sm text-muted-foreground">({elementLabelForChar(pillar.branch)})</span>
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ({[...pillar.jigang].filter((char) => char.trim()).join("/") || "-"})
+            </p>
+          </div>
+        ))}
+      </div>
+    </ReportSection>
+  );
+}
+
+function getLifeCycleSeason(index: number) {
+  return ["봄 (Spring)", "여름 (Summer)", "가을 (Autumn)", "겨울 (Winter)"][
+    index % 4
+  ];
+}
+
+function ReportDaewoonTimeline({ day }: { day: LuckyDay }) {
+  const timeline = day.daewoon.slice(0, 4);
+
+  return (
+    <ReportSection title="Step 2. 10년 단위 대운 흐름 (Life-Cycle Timeline)">
+      <div className="grid gap-3 sm:grid-cols-4">
+        {timeline.map((item, index) => (
+          <div key={item.index} className="relative rounded-md border bg-secondary/30 p-3 text-center">
+            {index < timeline.length - 1 && (
+              <span className="absolute right-[-0.9rem] top-1/2 hidden h-px w-5 bg-border sm:block" />
+            )}
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full border bg-background text-xs font-semibold">
+              {item.age}-{item.age + 9}
+            </div>
+            <p className="mt-3 text-sm font-medium">{item.ganziHangul}</p>
+            <p className="text-xs text-muted-foreground">
+              {translate(item.unseong, UNSEONG_KO)} · {getLifeCycleSeason(index)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </ReportSection>
+  );
+}
+
+function ReportElementRatio({ day }: { day: LuckyDay }) {
+  return (
+    <ReportSection title="Step 3. 오행 분석 및 기도 비율 (Energy Ratio)">
+      <div className="space-y-3">
+        {ELEMENT_ORDER.map((element) => {
+          const value = day.elementQi.percentages[element];
+
+          return (
+            <div
+              key={element}
+              className="grid items-center gap-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]"
+            >
+              <p className="font-medium">
+                {ELEMENT_EN[element]} ({ELEMENT_KO[element]}){" "}
+                <span className="text-muted-foreground">{value.toFixed(1)}%</span>
+              </p>
+              <div className="h-5 overflow-hidden rounded-sm bg-secondary">
+                <div
+                  className={cn("h-full", ELEMENT_BAR_CLASS[element])}
+                  style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ReportSection>
+  );
+}
+
+function ReportThemeList() {
+  return (
+    <ReportSection title="Step 4. 4대 프리미엄 분석 테마 해설 (Themes)">
+      <div className="space-y-2">
+        {REPORT_THEMES.map((theme) => (
+          <div
+            key={theme}
+            className="flex items-center justify-between gap-3 rounded-md bg-secondary px-4 py-4 text-sm font-medium"
+          >
+            <span>{theme}</span>
+            <span className="text-muted-foreground">&gt;</span>
+          </div>
+        ))}
+      </div>
+    </ReportSection>
+  );
+}
+
+function ReportGoldenMessage({ day }: { day: LuckyDay }) {
+  const strongest = ELEMENT_ORDER.reduce((best, element) =>
+    day.elementQi.percentages[element] > day.elementQi.percentages[best] ? element : best
+  );
+
+  return (
+    <section className="rounded-lg bg-primary p-5 text-primary-foreground">
+      <h3 className="text-sm font-semibold sm:text-base">
+        Step 5. [요약] 골든 메시지 (Summary)
+      </h3>
+      <p className="mt-8 text-sm leading-relaxed text-primary-foreground/75">
+        {day.dayPillarHangul} 일주는 {ELEMENT_KO[strongest]} 기운을 중심으로 삶의
+        방향을 세우는 후보입니다. 세부 해설은 프리미엄 테마 콘텐츠와 대운 분석
+        데이터가 연결되면 확장됩니다.
+      </p>
+    </section>
+  );
+}
+
+function ReportBottomNav() {
+  return (
+    <div className="grid grid-cols-3 border-t bg-secondary/80 text-center text-xs font-medium text-muted-foreground">
+      <span className="py-3">Home</span>
+      <span className="py-3 text-foreground">Selection</span>
+      <span className="py-3">My Page</span>
+    </div>
+  );
+}
+
 export function LuckyDayDetailDialog({
   day,
   open,
@@ -589,118 +768,35 @@ export function LuckyDayDetailDialog({
   if (!day) return null;
 
   const dateObj = new Date(`${day.date}T00:00:00`);
-  const visibleRelations = day.relations.pairs
-    .flatMap((pair) =>
-      [...pair.stem, ...pair.branch].map((relation) => ({
-        key: pair.key,
-        ...relation,
-      }))
-    )
-    .slice(0, 8);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-4xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Badge variant="default">Best {day.rank}</Badge>
-            <Badge variant="secondary">점수 {day.score}</Badge>
-          </div>
-          <DialogTitle className="text-2xl">
-            {format(dateObj, "yyyy년 M월 d일 (EEE)", { locale: ko })} ·{" "}
-            {day.timeLabel}
-          </DialogTitle>
-          <DialogDescription>
-            일주: {day.dayPillarHangul}({day.dayPillar})
-          </DialogDescription>
-        </DialogHeader>
-
-        <Separator />
-
-        <section className="space-y-2 rounded-md border bg-secondary/40 p-4">
-          <h3 className="text-sm font-semibold">일주 요약</h3>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {day.dayPillarHangul} 일주 해석은 추후 콘텐츠로 추가될 예정입니다.
-            현재는 만세력 정보와 휴리스틱 길일 점수를 기준으로 순위를
-            산정합니다.
-          </p>
-        </section>
-
-        <SajuChart day={day} />
-
-        <Separator />
-
-        <ElementQiChart day={day} />
-
-        <Separator />
-
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold">점수 구성</h3>
-          <div className="space-y-2">
-            {day.scoring.details.map((detail) => (
-              <div
-                key={detail.label}
-                className="flex items-start justify-between gap-4 rounded-md border p-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium">{detail.label}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatScoreDescription(detail.label, detail.description)}
-                  </p>
-                </div>
-                <Badge variant={detail.value >= 0 ? "secondary" : "outline"}>
-                  {detail.value > 0 ? "+" : ""}
-                  {detail.value}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <Separator />
-
-        <DaewoonChart day={day} />
-
-        <Separator />
-
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold">십성 / 관계</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border p-3">
-              <p className="text-xs font-medium text-muted-foreground">인종법</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {day.injongbeop.map((item) => (
-                  <Badge key={`${item.category}-${item.yangStem}`} variant="secondary">
-                    {translate(item.category, CATEGORY_KO)}{" "}
-                    {translate(item.yangStem, STEM_KO)}{" "}
-                    {translate(item.unseong, UNSEONG_KO)}
-                  </Badge>
-                ))}
-              </div>
+      <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 sm:max-w-4xl">
+        <div className="space-y-5 p-5 sm:p-8">
+          <DialogHeader className="items-center text-center">
+            <div className="flex items-center gap-2">
+              <Badge variant="default">Rank {day.rank}</Badge>
+              <Badge variant="secondary">Score {day.score.toFixed(1)}</Badge>
             </div>
-            <div className="rounded-md border p-3">
-              <p className="text-xs font-medium text-muted-foreground">공망</p>
-              <p className="mt-2 text-sm">
-                {translateBranches(day.gongmang.branches)}
-                {day.gongmang.pillarIndices.length > 0
-                  ? ` · 해당 주 ${day.gongmang.pillarIndices.length}개`
-                  : " · 해당 주 없음"}
-              </p>
-            </div>
-          </div>
-          {visibleRelations.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {visibleRelations.map((relation, index) => (
-                <Badge key={`${relation.key}-${relation.type}-${index}`} variant="outline">
-                  {translate(relation.type, RELATION_KO)}
-                  {relation.detail
-                    ? ` ${translate(relation.detail, RELATION_DETAIL_KO)}`
-                    : ""}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </section>
+            <DialogTitle className="pt-4 text-2xl font-semibold tracking-tight">
+              PREMIUM BIRTHDAY REPORT
+            </DialogTitle>
+            <DialogDescription>
+              삶의 지도와 나침반 (Life Guide & Compass)
+            </DialogDescription>
+            <div className="h-px w-full max-w-xl bg-border" />
+            <p className="text-sm font-medium">
+              {format(dateObj, "yyyy년 M월 d일 (EEE)", { locale: ko })} · {day.timeLabel}
+            </p>
+          </DialogHeader>
+
+          <ReportSajuCombination day={day} />
+          <ReportDaewoonTimeline day={day} />
+          <ReportElementRatio day={day} />
+          <ReportThemeList />
+          <ReportGoldenMessage day={day} />
+        </div>
+        <ReportBottomNav />
       </DialogContent>
     </Dialog>
   );

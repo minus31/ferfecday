@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
@@ -77,7 +77,7 @@ function ResultsContent() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-4 py-10">
+      <main className="mx-auto w-full max-w-4xl flex-1 space-y-8 px-4 py-10">
         <div className="space-y-3">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">
@@ -85,14 +85,15 @@ function ResultsContent() {
               다시 선택하기
             </Link>
           </Button>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{rangeLabel}</p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              우리 아이를 위한 길일 Top 10
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              BEST BIRTHDAYS FOUND
             </h1>
             <p className="text-sm text-muted-foreground">
-              기간 내 날짜와 시간대별 사주를 계산해 길일 점수순으로 정렬했습니다.
+              예정 기간 내 전수 연산 결과 (Sorted by Score)
             </p>
+            <p className="text-xs text-muted-foreground">{rangeLabel}</p>
+            <div className="mx-auto h-px w-full max-w-xl bg-border" />
           </div>
         </div>
 
@@ -115,11 +116,8 @@ function ResultsContent() {
 
         {!loading && !error && (
           <section className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-primary" />
-                <h2 className="text-sm font-semibold">Best 1 ~ 10</h2>
-              </div>
+            <div className="flex items-center justify-between gap-3 px-1">
+              <h2 className="text-sm font-semibold">Best 1 ~ 10</h2>
               <p className="text-xs text-muted-foreground">
                 {candidateCount}개 후보 평가
               </p>
