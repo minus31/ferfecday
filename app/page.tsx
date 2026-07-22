@@ -4,23 +4,41 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
-import { Sparkles } from "lucide-react";
+import { Compass, HeartHandshake, Sparkles, Star } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { SiteHeader } from "@/components/site-header";
+import {
+  DEFAULT_BIRTH_GENDER,
+  DEFAULT_BIRTH_LOCATION_ID,
+  getBirthLocation,
+  type BirthGender,
+} from "@/lib/birth-options";
+
+const highlights = [
+  { label: "상위 10개 후보", icon: Star },
+  { label: "사주 기반 해설", icon: Compass },
+  { label: "출산 지역 보정", icon: HeartHandshake },
+];
 
 export default function HomePage() {
   const router = useRouter();
   const [range, setRange] = React.useState<DateRange | undefined>();
+  const [gender, setGender] = React.useState<BirthGender>(DEFAULT_BIRTH_GENDER);
+  const [locationText, setLocationText] = React.useState(
+    getBirthLocation(DEFAULT_BIRTH_LOCATION_ID).label
+  );
 
-  const canSubmit = Boolean(range?.from && range?.to);
+  const canSubmit = Boolean(range?.from && range?.to && locationText.trim());
 
   const handleSubmit = () => {
     if (!range?.from || !range?.to) return;
     const params = new URLSearchParams({
       from: format(range.from, "yyyy-MM-dd"),
       to: format(range.to, "yyyy-MM-dd"),
+      gender,
+      location: locationText.trim(),
     });
     router.push(`/results?${params.toString()}`);
   };
@@ -28,33 +46,86 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-10 px-4 py-16">
-        <section className="flex flex-col items-center gap-4 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-            <Sparkles className="size-3.5" />
-            사주 기반 출생 택일
+      <main className="page-shell flex-1 items-center justify-center py-8 sm:py-10 lg:py-16">
+        <section className="grid w-full gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="surface-card overflow-hidden p-6 sm:p-8 lg:p-10">
+            <div className="eyebrow">
+              <Sparkles className="size-3.5" />
+              생일선물 · BirthdayGift
+            </div>
+            <div className="mt-6 space-y-4">
+              <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+                우리 아이의
+                <br />
+                <span className="text-primary">가장 좋은 날</span>을 찾아드려요
+              </h1>
+              <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+                출산 예정 기간을 입력하면, 사주 데이터와 지역 보정을 바탕으로
+                가장 안정적인 길일 후보를 깔끔하게 정리해 드립니다.
+              </p>
+            </div>
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {highlights.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="soft-panel flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Icon className="size-4" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            우리 아이의
-            <br />
-            <span className="text-primary">가장 좋은 날</span>을 찾아드려요
-          </h1>
-          <p className="max-w-md text-balance text-muted-foreground">
-            출산 예정 기간을 선택하면, 사주에 근거한 길일을
-            점수와 함께 카드로 보여드립니다.
-          </p>
-        </section>
 
-        <section className="w-full max-w-md space-y-4">
-          <DateRangePicker value={range} onChange={setRange} />
-          <Button
-            size="xl"
-            className="w-full"
-            disabled={!canSubmit}
-            onClick={handleSubmit}
-          >
-            길일 찾기
-          </Button>
+          <div className="surface-card p-5 sm:p-7">
+            <div className="space-y-5">
+              <DateRangePicker value={range} onChange={setRange} />
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">성별</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "M" as const, label: "남아" },
+                    { value: "F" as const, label: "여아" },
+                  ].map((item) => (
+                    <Button
+                      key={item.value}
+                      type="button"
+                      variant={gender === item.value ? "default" : "outline"}
+                      size="lg"
+                      onClick={() => setGender(item.value)}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">출산 지역</p>
+                <input
+                  value={locationText}
+                  onChange={(event) => setLocationText(event.target.value)}
+                  placeholder="예: 서울 강남구, 부산 해운대구, 제주"
+                  className="h-12 w-full rounded-[1rem] border border-input bg-background/90 px-3 text-base shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  입력한 지역명을 내부 좌표 테이블에 매칭해 동경 135도 기준시와의 경도 차이를 보정합니다.
+                </p>
+              </div>
+
+              <Button
+                size="xl"
+                className="w-full"
+                disabled={!canSubmit}
+                onClick={handleSubmit}
+              >
+                길일 찾기
+              </Button>
+            </div>
+          </div>
         </section>
       </main>
     </div>

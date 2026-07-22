@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">BirthdayGift app icon</title>
+  <desc id="desc">A blue rounded-square app icon with a white gift box and birthday sparkle.</desc>
+  <defs>
+    <linearGradient id="bg" x1="176" y1="112" x2="848" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#56A3FF"/>
+      <stop offset="0.54" stop-color="#3182F6"/>
+      <stop offset="1" stop-color="#1B64DA"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(326 256) rotate(48) scale(610)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.42"/>
+      <stop offset="0.42" stop-color="#FFFFFF" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="178" y="235" width="668" height="579" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#0A3180" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect x="56" y="56" width="912" height="912" rx="224" fill="url(#bg)"/>
+  <rect x="56" y="56" width="912" height="912" rx="224" fill="url(#glow)"/>
+  <rect x="72" y="72" width="880" height="880" rx="208" fill="none" stroke="#FFFFFF" stroke-opacity="0.34" stroke-width="24"/>
+  <g filter="url(#shadow)">
+    <path d="M264 430c0-34.24 27.76-62 62-62h372c34.24 0 62 27.76 62 62v88H264v-88Z" fill="#FFFFFF"/>
+    <path d="M306 542h412v220c0 42-34 76-76 76H382c-42 0-76-34-76-76V542Z" fill="#FFFFFF"/>
+    <path d="M468 368h88v470h-88V368Z" fill="#2F80ED"/>
+    <path d="M264 498h496v84H264v-84Z" fill="#2F80ED"/>
+    <path d="M512 357c-48-82-95-121-141-116-41 4-72 36-76 77-4 47 29 86 82 98 40 9 85-9 135-59Z" fill="#FFFFFF"/>
+    <path d="M512 357c48-82 95-121 141-116 41 4 72 36 76 77 4 47-29 86-82 98-40 9-85-9-135-59Z" fill="#FFFFFF"/>
+    <path d="M473 348c-31 28-59 39-82 34-25-6-39-22-37-42 2-18 16-32 34-34 23-2 52 12 85 42Z" fill="#56A3FF"/>
+    <path d="M551 348c31 28 59 39 82 34 25-6 39-22 37-42-2-18-16-32-34-34-23-2-52 12-85 42Z" fill="#56A3FF"/>
+  </g>
+  <path d="M786 242l20 55 55 20-55 20-20 55-20-55-55-20 55-20 20-55Z" fill="#FFE066"/>
+  <path d="M226 228l14 38 38 14-38 14-14 38-14-38-38-14 38-14 14-38Z" fill="#FFFFFF" fill-opacity="0.92"/>
+  <path d="M760 696c0 54-79 94-79 94s-79-40-79-94c0-29 21-53 49-53 14 0 25 6 30 16 5-10 16-16 30-16 28 0 49 24 49 53Z" fill="#FF6B8A"/>
+</svg>

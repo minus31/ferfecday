@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-const MAX_RANGE_DAYS = 14;
+const MAX_RANGE_DAYS = 3;
 
 interface DateRangePickerProps {
   value?: DateRange;
@@ -68,11 +68,11 @@ export function DateRangePicker({
             variant="outline"
             size="xl"
             className={cn(
-              "w-full justify-start text-left font-normal",
+              "h-14 w-full justify-start border-border/70 bg-white/80 px-4 text-left font-normal shadow-sm backdrop-blur",
               !value?.from && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 size-4" />
+            <CalendarIcon className="mr-2 size-4 text-primary" />
             {label}
           </Button>
         </PopoverTrigger>
@@ -88,7 +88,7 @@ export function DateRangePicker({
         </PopoverContent>
       </Popover>
       <p className="text-xs text-muted-foreground">
-        최대 {MAX_RANGE_DAYS}일(2주) 범위까지 선택할 수 있어요.
+        최대 {MAX_RANGE_DAYS}일 범위까지 선택할 수 있어요.
       </p>
     </div>
   );

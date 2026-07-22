@@ -10,6 +10,20 @@ export type ElementQiKey = "tree" | "fire" | "earth" | "metal" | "water";
 
 export type PillarPosition = "year" | "month" | "day" | "time";
 
+export type ElementRole =
+  | "bigeop"
+  | "insung"
+  | "siksang"
+  | "jaeseong"
+  | "gwanseong";
+
+export interface ElementRoleQi {
+  role: ElementRole;
+  element: ElementQiKey;
+  total: number;
+  percentage: number;
+}
+
 export interface ElementQiBreakdown {
   source: "stem" | "hidden-stem" | "stem-combine";
   position?: PillarPosition;
@@ -30,10 +44,15 @@ export interface ElementQiResult {
   breakdown: ElementQiBreakdown[];
 }
 
-const ELEMENT_KEYS: ElementQiKey[] = ["tree", "fire", "earth", "metal", "water"];
+export interface DaewoonElementOverlay {
+  index: number;
+  ganzi: string;
+}
+
+export const ELEMENT_KEYS: ElementQiKey[] = ["tree", "fire", "earth", "metal", "water"];
 const HEAVENLY_STEM_BASE = 0.7;
 
-const GENERATES: Record<ElementQiKey, ElementQiKey> = {
+export const GENERATES: Record<ElementQiKey, ElementQiKey> = {
   tree: "fire",
   fire: "earth",
   earth: "metal",
@@ -41,12 +60,20 @@ const GENERATES: Record<ElementQiKey, ElementQiKey> = {
   water: "tree",
 };
 
-const CONTROLS: Record<ElementQiKey, ElementQiKey> = {
+export const CONTROLS: Record<ElementQiKey, ElementQiKey> = {
   tree: "earth",
   earth: "water",
   water: "fire",
   fire: "metal",
   metal: "tree",
+};
+
+export const ELEMENT_ROLE_LABELS: Record<ElementRole, string> = {
+  bigeop: "비겁",
+  insung: "인성",
+  siksang: "식상",
+  jaeseong: "재성",
+  gwanseong: "관성",
 };
 
 const POSITION_LABEL: Record<PillarPosition, string> = {
@@ -147,8 +174,44 @@ function emptyElementValues(): Record<ElementQiKey, number> {
   };
 }
 
-function getElement(stem: string) {
+export function getElement(stem: string) {
   return STEM_INFO[stem]?.element as ElementQiKey | undefined;
+}
+
+export function getElementRole(
+  dayMasterElement: ElementQiKey,
+  targetElement: ElementQiKey
+): ElementRole {
+  if (dayMasterElement === targetElement) return "bigeop";
+  if (GENERATES[targetElement] === dayMasterElement) return "insung";
+  if (GENERATES[dayMasterElement] === targetElement) return "siksang";
+  if (CONTROLS[dayMasterElement] === targetElement) return "jaeseong";
+  return "gwanseong";
+}
+
+export function getElementRoleQi(
+  dayMasterElement: ElementQiKey,
+  elementQi: Pick<ElementQiResult, "totals" | "percentages">
+): Record<ElementRole, ElementRoleQi> {
+  const entries = ELEMENT_KEYS.map((element) => {
+    const role = getElementRole(dayMasterElement, element);
+
+    return [
+      role,
+      {
+        role,
+        element,
+        total: elementQi.totals[element],
+        percentage: elementQi.percentages[element],
+      },
+    ] as const;
+  });
+
+  return Object.fromEntries(entries) as Record<ElementRole, ElementRoleQi>;
+}
+
+export function getDayMasterElement(result: SajuResult) {
+  return getElement(result.pillars[1].pillar.stem);
 }
 
 function relationKey(first: string, second: string) {
@@ -205,6 +268,15 @@ function roundRecord(values: Record<ElementQiKey, number>, digits: number) {
   }
 
   return rounded;
+}
+
+function roundBreakdown(item: ElementQiBreakdown): ElementQiBreakdown {
+  return {
+    ...item,
+    base: Math.round(item.base * 10000) / 10000,
+    weight: Math.round(item.weight * 10000) / 10000,
+    value: Math.round(item.value * 10000) / 10000,
+  };
 }
 
 function getOrderedPillars(result: SajuResult) {
@@ -461,11 +533,57 @@ export function calculateElementQi(result: SajuResult): ElementQiResult {
     percentages: roundRecord(normalized.percentages, 2),
     missing: ELEMENT_KEYS.filter((key) => totals[key] <= 0),
     total: Math.round(normalized.total * 10000) / 10000,
-    breakdown: breakdown.map((item) => ({
-      ...item,
-      base: Math.round(item.base * 10000) / 10000,
-      weight: Math.round(item.weight * 10000) / 10000,
-      value: Math.round(item.value * 10000) / 10000,
-    })),
+    breakdown: breakdown.map(roundBreakdown),
+  };
+}
+
+export function applyDaewoonToElementQi(
+  elementQi: ElementQiResult,
+  daewoon: DaewoonElementOverlay
+): ElementQiResult {
+  const stem = daewoon.ganzi[0];
+  const branch = daewoon.ganzi[1];
+  const totals = { ...elementQi.totals };
+  const breakdown: ElementQiBreakdown[] = [...elementQi.breakdown];
+  const stemElement = getElement(stem);
+
+  if (stemElement) {
+    totals[stemElement] += HEAVENLY_STEM_BASE;
+    breakdown.push({
+      source: "stem",
+      stem,
+      branch,
+      element: stemElement,
+      base: HEAVENLY_STEM_BASE,
+      weight: 0,
+      value: HEAVENLY_STEM_BASE,
+      reasons: [`${daewoon.index}대운 천간 유입`],
+    });
+  }
+
+  for (const hidden of HIDDEN_STEM_RATIOS[branch] ?? []) {
+    if (hidden.ratio <= 0) continue;
+
+    totals[hidden.element] += hidden.ratio;
+    breakdown.push({
+      source: "hidden-stem",
+      stem: hidden.stem,
+      branch,
+      element: hidden.element,
+      base: hidden.ratio,
+      weight: 0,
+      value: hidden.ratio,
+      reasons: [`${daewoon.index}대운 지지 유입`],
+    });
+  }
+
+  const normalized = normalizePercentages(totals);
+
+  return {
+    totals: roundRecord(totals, 4),
+    percentages: roundRecord(normalized.percentages, 2),
+    missing: ELEMENT_KEYS.filter((key) => totals[key] <= 0),
+    total: Math.round(normalized.total * 10000) / 10000,
+    breakdown: breakdown.map(roundBreakdown),
   };
 }

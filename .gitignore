@@ -6,3 +6,7 @@ node_modules
 next-env.d.ts
 .DS_Store
 .playwright-mcp
+
+.granite
+out
+*.ait

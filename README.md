@@ -1,4 +1,4 @@
-# ferfecday - find the perfect day for your baby. 
+# 생일선물 (BirthdayGift) - find the perfect day for your baby.
 
 - Give the best day your baby. 
 
@@ -6,8 +6,9 @@
 
 ### 서비스 제공
 - 사주에 근거해서 출생 택일 기능을 제공함. 
-- 홈화면에서, Start-day ~ End-day 를 선택 (최대 2주 기간)
-- 선택된 기간동안의 길일을 찾아. Best 1을 보여줌(이때 30초 광고 보여줄예정), Best 5는 돈내거나 광고보게 할 예정 - 각 길일은 카드 형식
+- 홈화면에서, Start-day ~ End-day 를 선택 (최대 3일 기간)
+- 남아/여아와 출산 지역 텍스트를 입력한다.
+- 선택된 기간동안의 길일 Best 3을 계산한다.
 - 길일 카드를 클릭하면 팝업하여 길일에 대한 디테일한 정보를 제공한다.
 
 ### 배포 스택 (v1)
@@ -20,12 +21,20 @@
     - Google Admob
     - Meta
 
-별도의 Backend 서버 없이, Next.js의 서버 기능(Route Handlers / Server Actions)과 Supabase를 조합하여 시작한다.
+별도의 Backend 서버 없이, 정적 Next.js 앱으로 시작한다. Toss 미니앱 배포는 `ait build` 산출물을 사용한다.
+
+### AI 사주 해석 연결
+
+- 상세 리포트는 `NEXT_PUBLIC_SAJU_REPORT_API_URL`이 설정되면 해당 보호 API에 사주 데이터를 POST한다.
+- 요청 모델은 `gpt-5.5`이며 응답은 `overview`, `dayPillar`, `structure`, `lifeFlow` 문자열을 반환해야 한다.
+- OpenAI API 키는 정적 앱에 넣지 않는다. Supabase Edge Function 등 서버 측 보호 API에서만 관리한다.
+- URL이 없거나 호출에 실패하면 화면은 내장 기본 해설을 사용한다.
 
 | Layer | 선택 | 비고 |
 | --- | --- | --- |
-| Frontend / Server | Next.js (App Router) | UI + Route Handlers / Server Actions 로 BFF 역할 수행 |
-| Hosting / CDN | Vercel | Next.js 자동 배포, Preview Deploy, Edge Network |
+| Frontend | Next.js App Router static export | 브라우저 내 후보 생성 및 scoring |
+| Mini app | Apps in Toss | `@apps-in-toss/web-framework`, `ait build` |
+| Hosting / CDN | Vercel 또는 Toss 배포 | 웹/미니앱 채널 병행 |
 | Database | Supabase Postgres | RLS(Row Level Security) 로 권한 제어 |
 | Auth | Supabase Auth | 이메일/소셜 로그인, JWT 기반 세션 |
 | Storage | Supabase Storage | 이미지 등 파일 업로드 |
@@ -33,8 +42,8 @@
 
 ### 데이터 흐름
 
-- Client (Next.js) → Supabase JS SDK 로 직접 통신 (RLS 로 보호)
-- 민감하거나 서버에서만 처리해야 하는 로직은 Next.js Route Handlers / Server Actions 에서 Supabase Service Role Key 로 처리
+- Client (Next.js static export)에서 후보 생성 및 scoring 수행
+- 향후 민감하거나 서버에서만 처리해야 하는 로직은 별도 API/Edge Function으로 이관
 - Vercel 환경 변수에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 관리
 
 ### 향후 확장 여지

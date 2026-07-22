@@ -1,11 +1,10 @@
 "use client";
 
+import * as React from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import type { ReactNode } from "react";
+import { Sparkles } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import type { LuckyDaewoon, LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -14,7 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import type { LuckyAnnualFortune, LuckyDaewoon, LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
+import { cn } from "@/lib/utils";
 
 interface LuckyDayDetailDialogProps {
   day: LuckyDay | null;
@@ -22,166 +22,55 @@ interface LuckyDayDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const SIPSIN_KO: Record<string, string> = {
-  "本元": "본원",
-  "比肩": "비견",
-  "劫財": "겁재",
-  "食神": "식신",
-  "傷官": "상관",
-  "偏財": "편재",
-  "正財": "정재",
-  "偏官": "편관",
-  "正官": "정관",
-  "偏印": "편인",
-  "正印": "정인",
-};
-
-const UNSEONG_KO: Record<string, string> = {
-  "長生": "장생",
-  "沐浴": "목욕",
-  "冠帶": "관대",
-  "建祿": "건록",
-  "乾祿": "건록",
-  "帝旺": "제왕",
-  "衰": "쇠",
-  "病": "병",
-  "死": "사",
-  "墓": "묘",
-  "絶": "절",
-  "胎": "태",
-  "養": "양",
-};
-
-const SINSAL_KO: Record<string, string> = {
-  "劫殺": "겁살",
-  "災殺": "재살",
-  "天殺": "천살",
-  "地殺": "지살",
-  "年殺": "년살",
-  "月殺": "월살",
-  "亡身": "망신",
-  "將星": "장성",
-  "攀鞍": "반안",
-  "驛馬": "역마",
-  "六害": "육해",
-  "華蓋": "화개",
-};
-
-const RELATION_KO: Record<string, string> = {
-  "合": "합",
-  "沖": "충",
-  "刑": "형",
-  "破": "파",
-  "害": "해",
-  "怨嗔": "원진",
-  "鬼門": "귀문",
-};
-
-const RELATION_DETAIL_KO: Record<string, string> = {
-  "tree": "목",
-  "fire": "화",
-  "earth": "토",
-  "metal": "금",
-  "water": "수",
-  "自刑": "자형",
-};
-
-const CATEGORY_KO: Record<string, string> = {
-  "比劫": "비겁",
-  "食傷": "식상",
-  "財星": "재성",
-  "官星": "관성",
-  "印星": "인성",
-};
-
-const STEM_KO: Record<string, string> = {
-  "甲": "갑",
-  "乙": "을",
-  "丙": "병",
-  "丁": "정",
-  "戊": "무",
-  "己": "기",
-  "庚": "경",
-  "辛": "신",
-  "壬": "임",
-  "癸": "계",
-};
-
-const BRANCH_KO: Record<string, string> = {
-  "子": "자",
-  "丑": "축",
-  "寅": "인",
-  "卯": "묘",
-  "辰": "진",
-  "巳": "사",
-  "午": "오",
-  "未": "미",
-  "申": "신",
-  "酉": "유",
-  "戌": "술",
-  "亥": "해",
-};
-
 type FiveElement = "tree" | "fire" | "earth" | "metal" | "water";
 
-const ELEMENT_KO: Record<FiveElement, string> = {
-  tree: "목",
-  fire: "화",
-  earth: "토",
-  metal: "금",
-  water: "수",
+const STEM_KO: Record<string, string> = {
+  甲: "갑", 乙: "을", 丙: "병", 丁: "정", 戊: "무",
+  己: "기", 庚: "경", 辛: "신", 壬: "임", 癸: "계",
 };
-
+const BRANCH_KO: Record<string, string> = {
+  子: "자", 丑: "축", 寅: "인", 卯: "묘", 辰: "진", 巳: "사",
+  午: "오", 未: "미", 申: "신", 酉: "유", 戌: "술", 亥: "해",
+};
+const SIPSIN_KO: Record<string, string> = {
+  本元: "본원", 比肩: "비견", 劫財: "겁재", 食神: "식신", 傷官: "상관",
+  偏財: "편재", 正財: "정재", 偏官: "편관", 正官: "정관", 偏印: "편인", 正印: "정인",
+};
+const UNSEONG_KO: Record<string, string> = {
+  長生: "장생", 沐浴: "목욕", 冠帶: "관대", 建祿: "건록", 乾祿: "건록",
+  帝旺: "제왕", 衰: "쇠", 病: "병", 死: "사", 墓: "묘", 絶: "절", 胎: "태", 養: "양",
+};
+const SINSAL_KO: Record<string, string> = {
+  劫殺: "겁살", 災殺: "재살", 天殺: "천살", 地殺: "지살", 年殺: "년살", 月殺: "월살",
+  亡身: "망신살", 將星: "장성살", 攀鞍: "반안살", 驛馬: "역마살", 六害: "육해살", 華蓋: "화개살",
+};
+const ELEMENT_KO: Record<FiveElement, string> = {
+  tree: "목", fire: "화", earth: "토", metal: "금", water: "수",
+};
+const ELEMENT_HANJA: Record<FiveElement, string> = {
+  tree: "木", fire: "火", earth: "土", metal: "金", water: "水",
+};
+const ELEMENT_COLORS: Record<FiveElement, string> = {
+  tree: "#3f9b64", fire: "#e56b6f", earth: "#d59a45", metal: "#8f8c87", water: "#55769a",
+};
+const ELEMENT_TEXT_CLASS: Record<FiveElement, string> = {
+  tree: "text-emerald-700", fire: "text-rose-600", earth: "text-amber-600",
+  metal: "text-stone-500", water: "text-slate-700",
+};
+const ELEMENT_BG_CLASS: Record<FiveElement, string> = {
+  tree: "bg-emerald-100", fire: "bg-rose-100", earth: "bg-amber-100",
+  metal: "bg-stone-200", water: "bg-slate-200",
+};
 const ELEMENT_ORDER: FiveElement[] = ["tree", "fire", "earth", "metal", "water"];
 const GENERATES: Record<FiveElement, FiveElement> = {
-  tree: "fire",
-  fire: "earth",
-  earth: "metal",
-  metal: "water",
-  water: "tree",
+  tree: "fire", fire: "earth", earth: "metal", metal: "water", water: "tree",
 };
 const CONTROLS: Record<FiveElement, FiveElement> = {
-  tree: "earth",
-  earth: "water",
-  water: "fire",
-  fire: "metal",
-  metal: "tree",
+  tree: "earth", earth: "water", water: "fire", fire: "metal", metal: "tree",
 };
 
-function translate(value: string, table: Record<string, string>) {
+function tr(value: string, table: Record<string, string>) {
   return table[value] ?? value;
-}
-
-function translateBranches(value: string[]) {
-  return value.map((branch) => translate(branch, BRANCH_KO)).join(", ");
-}
-
-function formatScoreDescription(label: string, description: string) {
-  if (label !== "12운성") return description;
-
-  return description
-    .split(",")
-    .map((value) => translate(value.trim(), UNSEONG_KO))
-    .join(", ");
-}
-
-function getElementClass(char: string) {
-  if ("甲乙寅卯".includes(char)) {
-    return "border-green-500 bg-green-500 text-white";
-  }
-  if ("丙丁巳午".includes(char)) {
-    return "border-red-500 bg-red-500 text-white";
-  }
-  if ("戊己辰戌丑未".includes(char)) {
-    return "border-amber-500 bg-amber-500 text-foreground";
-  }
-  if ("庚辛申酉".includes(char)) {
-    return "border-slate-300 bg-white text-foreground";
-  }
-  if ("壬癸子亥".includes(char)) {
-    return "border-neutral-950 bg-neutral-950 text-white";
-  }
-  return "border-slate-300 bg-white text-foreground";
 }
 
 function getElement(char: string): FiveElement {
@@ -192,611 +81,391 @@ function getElement(char: string): FiveElement {
   return "water";
 }
 
-function getElementFillClass(element: FiveElement) {
-  if (element === "tree") return "#22c55e";
-  if (element === "fire") return "#ef4444";
-  if (element === "earth") return "#facc15";
-  if (element === "metal") return "#d6d3d1";
-  return "#94a3b8";
-}
-
-function getElementRole(dayElement: FiveElement, targetElement: FiveElement) {
-  if (dayElement === targetElement) return "비겁";
-  if (GENERATES[dayElement] === targetElement) return "식상";
-  if (GENERATES[targetElement] === dayElement) return "인성";
-  if (CONTROLS[dayElement] === targetElement) return "재성";
+function getRole(dayElement: FiveElement, target: FiveElement) {
+  if (dayElement === target) return "비겁";
+  if (GENERATES[dayElement] === target) return "식상";
+  if (GENERATES[target] === dayElement) return "인성";
+  if (CONTROLS[dayElement] === target) return "재성";
   return "관성";
 }
 
-function getClockwiseElementsFrom(dayElement: FiveElement) {
-  const startIndex = ELEMENT_ORDER.indexOf(dayElement);
-
-  return [
-    ...ELEMENT_ORDER.slice(startIndex),
-    ...ELEMENT_ORDER.slice(0, startIndex),
-  ];
+function rotateElements(dayElement: FiveElement) {
+  const index = ELEMENT_ORDER.indexOf(dayElement);
+  return [...ELEMENT_ORDER.slice(index), ...ELEMENT_ORDER.slice(0, index)];
 }
 
-function GanjiTile({ value, size = "lg" }: { value: string; size?: "sm" | "lg" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md border font-semibold leading-none shadow-sm",
-        getElementClass(value),
-        size === "lg" ? "size-10 text-2xl sm:size-12 sm:text-3xl" : "size-8 text-xl"
-      )}
-    >
-      {value}
-    </span>
-  );
-}
-
-function HiddenStemChips({ value }: { value: string }) {
-  const chars = [...value].filter((char) => char.trim());
-
-  if (chars.length === 0) return <span className="text-muted-foreground">-</span>;
-
-  return (
-    <div className="flex flex-wrap justify-center gap-1">
-      {chars.map((char, index) => (
-        <span
-          key={`${char}-${index}`}
-          className={cn(
-            "inline-flex size-5 items-center justify-center rounded text-sm font-semibold",
-            getElementClass(char)
-          )}
-        >
-          {char}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function SajuPillarColumn({
-  pillar,
-  isGongmang,
-}: {
-  pillar: LuckyPillar;
-  isGongmang: boolean;
+function Section({ title, subtitle, children }: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="grid min-w-0 justify-items-center gap-2 text-center">
-      <p className="text-xs font-medium text-muted-foreground sm:text-sm">{pillar.name}</p>
-      <p className="text-xs font-medium text-muted-foreground sm:text-sm">
-        {translate(pillar.stemSipsin, SIPSIN_KO)}
-      </p>
-      <GanjiTile value={pillar.stem} />
-      <GanjiTile value={pillar.branch} />
-      <p className="text-xs font-medium text-muted-foreground sm:text-sm">
-        {translate(pillar.branchSipsin, SIPSIN_KO)}
-      </p>
-      <div className="mt-1 space-y-1 text-xs text-foreground sm:text-sm">
-        <p>{translate(pillar.unseong, UNSEONG_KO)}</p>
-        <p>{translate(pillar.sinsal, SINSAL_KO)}</p>
-        <HiddenStemChips value={pillar.jigang} />
-        <p className="text-muted-foreground">{isGongmang ? "공망" : "-"}</p>
+    <section className="rounded-lg border border-border bg-card p-4 shadow-[0_4px_12px_rgba(36,30,34,0.08)] sm:p-6">
+      <div>
+        <h3 className="font-serif text-xl font-bold tracking-tight sm:text-2xl">{title}</h3>
+        {subtitle && <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>}
       </div>
-    </div>
-  );
-}
-
-function SajuChart({ day }: { day: LuckyDay }) {
-  return (
-    <section className="rounded-lg border bg-background p-4">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold">사주팔자</h3>
-      </div>
-      <div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-4">
-        <div className="grid gap-2 pt-8 text-xs font-medium text-muted-foreground sm:text-sm">
-          <p>십성</p>
-          <p className="flex h-12 items-center">천간</p>
-          <p className="flex h-12 items-center">지지</p>
-          <p>십성</p>
-          <div className="my-1 h-px bg-border" />
-          <p>운성</p>
-          <p>신살</p>
-          <p>장간</p>
-          <p>공망</p>
-        </div>
-        <div className="min-w-0">
-          <div className="grid grid-cols-4 gap-2 sm:gap-5">
-            {day.pillars.map((pillar, index) => (
-              <SajuPillarColumn
-                key={pillar.name}
-                pillar={pillar}
-                isGongmang={day.gongmang.pillarIndices.includes(index)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      <div className="mt-5">{children}</div>
     </section>
   );
 }
 
-function ElementQiChart({ day }: { day: LuckyDay }) {
-  const dayElement = getElement(day.pillars[1].stem);
-  const radius = 12;
-  const clockwiseElements = getClockwiseElementsFrom(dayElement);
-  const positionSlots = [
-    { x: 50, y: 18 },
-    { x: 82, y: 41 },
-    { x: 70, y: 78 },
-    { x: 30, y: 78 },
-    { x: 18, y: 41 },
-  ];
-  const positions = clockwiseElements.reduce<Record<FiveElement, { x: number; y: number }>>(
-    (acc, element, index) => ({
-      ...acc,
-      [element]: positionSlots[index],
-    }),
-    {
-      tree: positionSlots[0],
-      fire: positionSlots[1],
-      earth: positionSlots[2],
-      metal: positionSlots[3],
-      water: positionSlots[4],
-    }
+function GanjiValue({ char, compact = false }: { char: string; compact?: boolean }) {
+  const element = getElement(char);
+  const hangul = STEM_KO[char] ?? BRANCH_KO[char] ?? char;
+  return (
+    <div className={cn("font-bold leading-none", ELEMENT_TEXT_CLASS[element])}>
+      <span className={compact ? "text-2xl" : "text-3xl sm:text-4xl"}>{char}</span>
+      <span className={cn("ml-1 font-semibold", compact ? "text-xs" : "text-sm")}>{hangul}</span>
+      {!compact && (
+        <span className="mt-1 block text-[10px] font-medium opacity-75">
+          {ELEMENT_KO[element]} · {ELEMENT_HANJA[element]}
+        </span>
+      )}
+    </div>
   );
-  const generatedPaths: Array<[FiveElement, FiveElement]> = [
-    ["tree", "fire"],
-    ["fire", "earth"],
-    ["earth", "metal"],
-    ["metal", "water"],
-    ["water", "tree"],
-  ];
-  const controlledPaths: Array<[FiveElement, FiveElement]> = [
-    ["tree", "earth"],
-    ["earth", "water"],
-    ["water", "fire"],
-    ["fire", "metal"],
-    ["metal", "tree"],
-  ];
-  const getTrimmedLine = (from: FiveElement, to: FiveElement, inset = 3) => {
-    const start = positions[from];
-    const end = positions[to];
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.hypot(dx, dy);
-    const ux = dx / length;
-    const uy = dy / length;
-    const trim = radius + inset;
+}
 
-    return {
-      x1: start.x + ux * trim,
-      y1: start.y + uy * trim,
-      x2: end.x - ux * trim,
-      y2: end.y - uy * trim,
-    };
-  };
+function SajuTable({ day }: { day: LuckyDay }) {
+  const rows: Array<{ label: string; render: (pillar: LuckyPillar, index: number) => React.ReactNode; className?: string }> = [
+    { label: "천간", render: (pillar) => <GanjiValue char={pillar.stem} /> , className: "py-4" },
+    { label: "십성", render: (pillar) => tr(pillar.stemSipsin, SIPSIN_KO) },
+    { label: "지지", render: (pillar) => <GanjiValue char={pillar.branch} />, className: "py-4" },
+    { label: "십성", render: (pillar) => tr(pillar.branchSipsin, SIPSIN_KO) },
+    { label: "지장간", render: (pillar) => [...pillar.jigang].map((char) => STEM_KO[char] ?? char).join("·") || "-" },
+    { label: "12운성", render: (pillar) => tr(pillar.unseong, UNSEONG_KO) },
+    { label: "12신살", render: (pillar) => tr(pillar.sinsal, SINSAL_KO) },
+    { label: "공망", render: (_, index) => day.gongmang.pillarIndices.includes(index) ? "공망" : "-" },
+  ];
 
   return (
-    <section className="rounded-lg border bg-background p-4">
-      <h3 className="text-lg font-semibold">나의 오행·기도</h3>
-      <div className="mt-3 flex gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="h-0.5 w-8 bg-blue-500" />
-          <span>생</span>
+    <Section title="사주 테이블" subtitle="천간과 지지는 흐름을 읽을 수 있도록 각각 한 줄로 유지했습니다.">
+      <div className="overflow-hidden rounded-md border border-border">
+        <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-xs font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+          <div className="border-r border-border p-2" />
+          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-2 last:border-r-0">{pillar.name}</div>)}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="h-0.5 w-8 bg-red-500" />
-          <span>극</span>
-        </div>
-      </div>
-
-      <div className="mx-auto mt-4 w-full max-w-[34rem]">
-        <svg
-          className="block h-auto w-full"
-          viewBox="0 0 100 100"
-          role="img"
-          aria-label="오행 분포와 생극 관계 그래프"
-        >
-          <defs>
-            <marker
-              id="generate-arrowhead"
-              markerHeight="3"
-              markerWidth="3"
-              orient="auto"
-              refX="2.4"
-              refY="1.5"
-            >
-              <path d="M0,0 L3,1.5 L0,3 Z" fill="#3b82f6" />
-            </marker>
-            <marker
-              id="control-arrowhead"
-              markerHeight="3"
-              markerWidth="3"
-              orient="auto"
-              refX="2.4"
-              refY="1.5"
-            >
-              <path d="M0,0 L3,1.5 L0,3 Z" fill="#ef4444" />
-            </marker>
-            {ELEMENT_ORDER.map((element) => (
-              <clipPath key={element} id={`element-clip-${element}`}>
-                <circle cx={positions[element].x} cy={positions[element].y} r={radius} />
-              </clipPath>
+        {rows.map((row, rowIndex) => (
+          <div key={`${row.label}-${rowIndex}`} className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[11px] sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+            <div className="flex items-center justify-start border-r border-border bg-background p-2 font-semibold text-muted-foreground">{row.label}</div>
+            {day.pillars.map((pillar, index) => (
+              <div key={`${pillar.name}-${row.label}`} className={cn("flex min-w-0 items-center justify-center border-r border-border px-1.5 py-2 font-medium last:border-r-0", row.className)}>
+                {row.render(pillar, index)}
+              </div>
             ))}
-          </defs>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
 
-          <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-            {generatedPaths.map(([from, to]) => {
-              const line = getTrimmedLine(from, to);
+function ElementPentagon({ day }: { day: LuckyDay }) {
+  const dayElement = getElement(day.pillars[1].stem);
+  const elements = rotateElements(dayElement);
+  const center = { x: 50, y: 49 };
+  const radius = 31;
+  const points = elements.map((element, index) => {
+    const angle = (-90 + index * 72) * Math.PI / 180;
+    return { element, x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius };
+  });
+  const dataPoints = points.map(({ element, x, y }) => {
+    const ratio = Math.max(0.12, Math.min(1, day.elementQi.percentages[element] / 40));
+    return `${center.x + (x - center.x) * ratio},${center.y + (y - center.y) * ratio}`;
+  }).join(" ");
 
-              return (
-                <line
-                  key={`generate-${from}-${to}`}
-                  x1={line.x1}
-                  y1={line.y1}
-                  x2={line.x2}
-                  y2={line.y2}
-                  stroke="#3b82f6"
-                  strokeWidth="1"
-                  markerEnd="url(#generate-arrowhead)"
-                />
-              );
-            })}
-          </g>
-          <g fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.82">
-            {controlledPaths.map(([from, to]) => {
-              const line = getTrimmedLine(from, to, 4);
-
-              return (
-                <line
-                  key={`control-${from}-${to}`}
-                  x1={line.x1}
-                  y1={line.y1}
-                  x2={line.x2}
-                  y2={line.y2}
-                  stroke="#ef4444"
-                  strokeWidth="1.1"
-                  markerEnd="url(#control-arrowhead)"
-                />
-              );
-            })}
-          </g>
-
-          {clockwiseElements.map((element) => {
-            const position = positions[element];
-            const percent = day.elementQi.percentages[element];
-            const fillHeight = (radius * 2 * Math.min(100, Math.max(0, percent))) / 100;
-            const fillTop = position.y + radius - fillHeight;
-
+  return (
+    <Section title="오행 기도" subtitle="가장 위의 꼭짓점은 일간 오행이며, 시계 방향으로 목·화·토·금·수의 생 흐름을 따릅니다.">
+      <div className="mx-auto max-w-xl">
+        <svg viewBox="0 0 100 102" className="h-auto w-full" role="img" aria-label="오행 기도 오각형 차트">
+          {[1, 0.66, 0.33].map((scale) => (
+            <polygon key={scale} points={points.map(({ x, y }) => `${center.x + (x - center.x) * scale},${center.y + (y - center.y) * scale}`).join(" ")} fill="none" stroke="#d6d3d1" strokeWidth="0.5" />
+          ))}
+          {points.map(({ x, y, element }) => <line key={element} x1={center.x} y1={center.y} x2={x} y2={y} stroke="#e7e5e4" strokeWidth="0.5" />)}
+          <polygon points={dataPoints} fill="rgba(110,59,99,.16)" stroke="#6e3b63" strokeWidth="1.2" />
+          {points.map(({ element, x, y }, index) => {
+            const labelX = center.x + (x - center.x) * 1.34;
+            const labelY = center.y + (y - center.y) * 1.34;
             return (
               <g key={element}>
-                <circle
-                  cx={position.x}
-                  cy={position.y}
-                  r={radius}
-                  fill="white"
-                  stroke="#d6d3d1"
-                  strokeWidth="0.7"
-                />
-                <rect
-                  x={position.x - radius}
-                  y={fillTop}
-                  width={radius * 2}
-                  height={fillHeight}
-                  fill={getElementFillClass(element)}
-                  opacity="0.75"
-                  clipPath={`url(#element-clip-${element})`}
-                />
-                <circle
-                  cx={position.x}
-                  cy={position.y}
-                  r={radius}
-                  fill="none"
-                  stroke="#b9b4af"
-                  strokeWidth="0.7"
-                />
-                <text
-                  x={position.x}
-                  y={position.y - 2}
-                  textAnchor="middle"
-                  className="fill-stone-700 text-[3.4px] font-semibold"
-                >
-                  {ELEMENT_KO[element]}({getElementRole(dayElement, element)})
+                <circle cx={x} cy={y} r="2" fill={ELEMENT_COLORS[element]} />
+                <text x={labelX} y={labelY - 1.5} textAnchor="middle" className="fill-stone-700 text-[3.4px] font-bold">
+                  {ELEMENT_KO[element]} · {getRole(dayElement, element)}{index === 0 ? " (일간)" : ""}
                 </text>
-                <text
-                  x={position.x}
-                  y={position.y + 5.8}
-                  textAnchor="middle"
-                  className="fill-stone-700 text-[5px] font-bold"
-                >
-                  {percent.toFixed(1)}%
+                <text x={labelX} y={labelY + 3} textAnchor="middle" className="fill-stone-500 text-[3.1px] font-semibold">
+                  {day.elementQi.percentages[element].toFixed(1)}%
                 </text>
               </g>
             );
           })}
         </svg>
       </div>
-
-      <div className="mt-4 grid grid-cols-5 gap-2 text-center">
-        {ELEMENT_ORDER.map((element) => (
-          <div key={element} className="rounded-md border bg-secondary/40 px-2 py-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              {ELEMENT_KO[element]}
-            </p>
-            <p className="mt-1 text-sm font-semibold">
-              {day.elementQi.percentages[element].toFixed(1)}%
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {day.elementQi.totals[element].toFixed(2)}
-            </p>
-          </div>
-        ))}
-      </div>
-    </section>
+    </Section>
   );
 }
 
-function DaewoonColumn({
-  item,
-  active,
-}: {
-  item: LuckyDaewoon;
-  active: boolean;
-}) {
-  const [stem, branch] = [...item.ganzi];
-
-  return (
-    <div
-      className={cn(
-        "grid min-w-0 justify-items-center gap-1 rounded-xl px-1.5 py-3 text-center",
-        active && "border-2 border-amber-500 bg-amber-50"
-      )}
-    >
-      <p className="text-sm font-medium text-muted-foreground">{item.age}세</p>
-      <p className="text-sm font-medium text-muted-foreground">
-        {translate(item.stemSipsin, SIPSIN_KO)}
-      </p>
-      <GanjiTile value={stem} size="sm" />
-      <GanjiTile value={branch} size="sm" />
-      <p className="text-sm font-medium text-muted-foreground">
-        {translate(item.branchSipsin, SIPSIN_KO)}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {translate(item.unseong, UNSEONG_KO)}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {translate(item.sinsal, SINSAL_KO)}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {item.isGongmang ? "공망" : "-"}
-      </p>
-    </div>
-  );
-}
-
-function DaewoonChart({ day }: { day: LuckyDay }) {
-  return (
-    <section className="rounded-lg border bg-background p-4">
-      <h3 className="text-lg font-semibold">대운</h3>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-10">
-        {day.daewoon.map((item, index) => (
-          <DaewoonColumn key={item.index} item={item} active={index === 0} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-const ELEMENT_EN: Record<FiveElement, string> = {
-  tree: "Wood",
-  fire: "Fire",
-  earth: "Earth",
-  metal: "Metal",
-  water: "Water",
-};
-
-const ELEMENT_BAR_CLASS: Record<FiveElement, string> = {
-  tree: "bg-green-500",
-  fire: "bg-red-500",
-  earth: "bg-yellow-400",
-  metal: "bg-neutral-400",
-  water: "bg-blue-500",
-};
-
-const REPORT_THEMES = [
-  "Theme 1. 타고난 그릇과 기질 (일주론/12운성 성격)",
-  "Theme 2. 평생의 성공과 재능 (식재관/직업 적성)",
-  "Theme 3. 소형 업상대체 양육 솔루션 (건강/오감치료)",
-  "Theme 4. 인생의 타이밍과 변화의 나침반 (대운 분석)",
+const SPECIAL_SAL_META: Array<{ key: keyof LuckyDay["specialSals"]; label: string }> = [
+  { key: "cheonul", label: "천을귀인" }, { key: "cheonduk", label: "천덕귀인" },
+  { key: "wolduk", label: "월덕귀인" }, { key: "munchang", label: "문창귀인" },
+  { key: "geumyeo", label: "금여록" }, { key: "dohwa", label: "도화살" },
+  { key: "yangin", label: "양인살" },
 ];
 
-function elementLabelForChar(char: string) {
-  const element = getElement(char);
-  return `${ELEMENT_KO[element]}/${ELEMENT_EN[element]}`;
+function getPillarStars(day: LuckyDay, index: number) {
+  const stars = SPECIAL_SAL_META.filter(({ key }) => {
+    const value = day.specialSals[key];
+    return Array.isArray(value) && value.includes(index);
+  }).map(({ label }) => label);
+  if (index === 1 && day.specialSals.baekho) stars.push("백호살");
+  if (index === 1 && day.specialSals.goegang) stars.push("괴강살");
+  if (index === 1 && day.specialSals.hongyeom) stars.push("홍염살");
+  return stars;
 }
 
-function ReportSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function StarsTable({ day }: { day: LuckyDay }) {
+  const allStars = Array.from(new Set(day.pillars.flatMap((_, index) => getPillarStars(day, index))));
   return (
-    <section className="rounded-lg border bg-background p-4 sm:p-5">
-      <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
-      <div className="mt-5">{children}</div>
-    </section>
-  );
-}
-
-function ReportSajuCombination({ day }: { day: LuckyDay }) {
-  return (
-    <ReportSection title="Step 1. 사주팔자 공식 (Saju Combination)">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {day.pillars.map((pillar) => (
-          <div key={pillar.name} className="min-w-0 space-y-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground sm:text-sm">
-              {pillar.name.replace("주", "")} ({pillar.name === "시주" ? "Hour" : pillar.name === "일주" ? "Day" : pillar.name === "월주" ? "Month" : "Year"})
-            </p>
-            <div className="space-y-1">
-              <p className="text-lg font-semibold">
-                {pillar.stem} <span className="text-sm text-muted-foreground">({elementLabelForChar(pillar.stem)})</span>
-              </p>
-              <p className="text-lg font-semibold">
-                {pillar.branch} <span className="text-sm text-muted-foreground">({elementLabelForChar(pillar.branch)})</span>
-              </p>
+    <Section title="신살과 길성" subtitle={allStars.length ? allStars.join(", ") : "두드러진 특수 길성·신살이 없습니다."}>
+      <div className="overflow-hidden rounded-md border border-border">
+        <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-xs font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+          <div className="border-r border-border p-2" />
+          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-2 last:border-r-0">{pillar.name}</div>)}
+        </div>
+        <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[10px] leading-5 sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+          <div className="flex items-center border-r border-border bg-background p-2 font-semibold text-muted-foreground">지지</div>
+          {day.pillars.map((pillar, index) => (
+            <div key={pillar.name} className="min-h-24 border-r border-border p-2 last:border-r-0">
+              {getPillarStars(day, index).length ? getPillarStars(day, index).map((star) => <p key={star}>{star}</p>) : <p className="text-muted-foreground">-</p>}
             </div>
-            <p className="text-xs text-muted-foreground">
-              ({[...pillar.jigang].filter((char) => char.trim()).join("/") || "-"})
-            </p>
+          ))}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function Yongshin({ day }: { day: LuckyDay }) {
+  return (
+    <Section title="용신">
+      <div className="rounded-md border border-accent bg-gold-soft p-4">
+        <p className="font-mono text-xs font-semibold tracking-wide text-primary">용신</p>
+        <p className="mt-1 text-lg font-bold">
+          {day.yongshin.method === "johu" ? "조후용신" : "억부용신"} : {ELEMENT_KO[day.yongshin.element]}({ELEMENT_HANJA[day.yongshin.element]})
+        </p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{day.yongshin.message}</p>
+      </div>
+    </Section>
+  );
+}
+
+function StrengthChart({ day }: { day: LuckyDay }) {
+  const labels = ["극신약", "태신약", "약신약", "중화신약", "중화신강", "약신강", "태신강", "극신강"];
+  const position = Math.max(0, Math.min(100, (day.strength.si + 50) / 100 * 100));
+  return (
+    <Section title="신강 / 신약 지수" subtitle={`${day.strength.gradeLabel} · SI ${day.strength.si.toFixed(2)}%`}>
+      <div className="rounded-md border border-border bg-background p-4 sm:p-6">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span>득령 {day.strength.roleQi.insung.percentage >= 20 ? "●" : "×"}</span>
+          <span>득지 {day.strength.roleQi.bigeop.percentage >= 20 ? "●" : "×"}</span>
+          <span>득시 {day.strength.supportQi >= day.strength.drainControlQi ? "●" : "×"}</span>
+          <strong className="text-primary">{day.strength.gradeLabel}</strong>
+        </div>
+        <p className="mt-5 text-sm leading-7">이 사주는 <strong>{day.strength.gradeLabel}</strong>에 해당합니다. 생조 {day.strength.supportQi.toFixed(1)}와 극설 {day.strength.drainControlQi.toFixed(1)}의 균형으로 산출했습니다.</p>
+        <div className="relative mt-10 pb-12">
+          <div className="h-2 rounded-full bg-gradient-to-r from-sky-300 via-stone-200 to-rose-300" />
+          <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${position}%` }}>
+            <span className="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-bold">나</span>
+            <div className="size-5 rounded-full border-4 border-card bg-primary shadow" />
           </div>
-        ))}
-      </div>
-    </ReportSection>
-  );
-}
-
-function getLifeCycleSeason(index: number) {
-  return ["봄 (Spring)", "여름 (Summer)", "가을 (Autumn)", "겨울 (Winter)"][
-    index % 4
-  ];
-}
-
-function ReportDaewoonTimeline({ day }: { day: LuckyDay }) {
-  const timeline = day.daewoon.slice(0, 4);
-
-  return (
-    <ReportSection title="Step 2. 10년 단위 대운 흐름 (Life-Cycle Timeline)">
-      <div className="grid gap-3 sm:grid-cols-4">
-        {timeline.map((item, index) => (
-          <div key={item.index} className="relative rounded-md border bg-secondary/30 p-3 text-center">
-            {index < timeline.length - 1 && (
-              <span className="absolute right-[-0.9rem] top-1/2 hidden h-px w-5 bg-border sm:block" />
-            )}
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full border bg-background text-xs font-semibold">
-              {item.age}-{item.age + 9}
-            </div>
-            <p className="mt-3 text-sm font-medium">{item.ganziHangul}</p>
-            <p className="text-xs text-muted-foreground">
-              {translate(item.unseong, UNSEONG_KO)} · {getLifeCycleSeason(index)}
-            </p>
+          <div className="absolute inset-x-0 top-6 grid grid-cols-8 text-center text-[9px] text-muted-foreground sm:text-xs">
+            {labels.map((label) => <span key={label}>{label}</span>)}
           </div>
-        ))}
+        </div>
       </div>
-    </ReportSection>
+    </Section>
   );
 }
 
-function ReportElementRatio({ day }: { day: LuckyDay }) {
+function FortuneGanji({ ganzi }: { ganzi: string }) {
   return (
-    <ReportSection title="Step 3. 오행 분석 및 기도 비율 (Energy Ratio)">
-      <div className="space-y-3">
-        {ELEMENT_ORDER.map((element) => {
-          const value = day.elementQi.percentages[element];
-
-          return (
-            <div
-              key={element}
-              className="grid items-center gap-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]"
-            >
-              <p className="font-medium">
-                {ELEMENT_EN[element]} ({ELEMENT_KO[element]}){" "}
-                <span className="text-muted-foreground">{value.toFixed(1)}%</span>
-              </p>
-              <div className="h-5 overflow-hidden rounded-sm bg-secondary">
-                <div
-                  className={cn("h-full", ELEMENT_BAR_CLASS[element])}
-                  style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </ReportSection>
-  );
-}
-
-function ReportThemeList() {
-  return (
-    <ReportSection title="Step 4. 4대 프리미엄 분석 테마 해설 (Themes)">
-      <div className="space-y-2">
-        {REPORT_THEMES.map((theme) => (
-          <div
-            key={theme}
-            className="flex items-center justify-between gap-3 rounded-md bg-secondary px-4 py-4 text-sm font-medium"
-          >
-            <span>{theme}</span>
-            <span className="text-muted-foreground">&gt;</span>
-          </div>
-        ))}
-      </div>
-    </ReportSection>
-  );
-}
-
-function ReportGoldenMessage({ day }: { day: LuckyDay }) {
-  const strongest = ELEMENT_ORDER.reduce((best, element) =>
-    day.elementQi.percentages[element] > day.elementQi.percentages[best] ? element : best
-  );
-
-  return (
-    <section className="rounded-lg bg-primary p-5 text-primary-foreground">
-      <h3 className="text-sm font-semibold sm:text-base">
-        Step 5. [요약] 골든 메시지 (Summary)
-      </h3>
-      <p className="mt-8 text-sm leading-relaxed text-primary-foreground/75">
-        {day.dayPillarHangul} 일주는 {ELEMENT_KO[strongest]} 기운을 중심으로 삶의
-        방향을 세우는 후보입니다. 세부 해설은 프리미엄 테마 콘텐츠와 대운 분석
-        데이터가 연결되면 확장됩니다.
-      </p>
-    </section>
-  );
-}
-
-function ReportBottomNav() {
-  return (
-    <div className="grid grid-cols-3 border-t bg-secondary/80 text-center text-xs font-medium text-muted-foreground">
-      <span className="py-3">Home</span>
-      <span className="py-3 text-foreground">Selection</span>
-      <span className="py-3">My Page</span>
+    <div className="grid gap-1">
+      {[...ganzi].map((char, index) => {
+        const element = getElement(char);
+        return <div key={`${char}-${index}`} className={cn("flex size-12 items-center justify-center rounded-lg text-2xl font-bold", ELEMENT_BG_CLASS[element], ELEMENT_TEXT_CLASS[element])}>{char}</div>;
+      })}
     </div>
   );
 }
 
-export function LuckyDayDetailDialog({
-  day,
-  open,
-  onOpenChange,
-}: LuckyDayDetailDialogProps) {
-  if (!day) return null;
+function FortuneColumn({ item }: { item: LuckyDaewoon | LuckyAnnualFortune }) {
+  const isDaewoon = "age" in item;
+  return (
+    <div className="grid w-[5.3rem] shrink-0 justify-items-center gap-2 text-center">
+      <div className="h-10 text-sm font-semibold leading-5">
+        <p>{isDaewoon ? `${item.age}세` : item.year}</p>
+        <p className="text-xs text-muted-foreground">{tr(item.stemSipsin, SIPSIN_KO)}</p>
+      </div>
+      <FortuneGanji ganzi={item.ganzi} />
+      <div className="text-xs leading-5 text-muted-foreground">
+        <p>{tr(item.branchSipsin, SIPSIN_KO)}</p>
+        <p>{tr(item.unseong, UNSEONG_KO)}</p>
+        <p>{tr(item.sinsal, SINSAL_KO)}</p>
+      </div>
+    </div>
+  );
+}
 
+function FortuneFlow({ day }: { day: LuckyDay }) {
+  const reversedDaewoon = [...day.daewoon].reverse();
+  const reversedAnnualFortunes = [...day.annualFortunes].reverse();
+
+  return (
+    <Section title="대운과 세운" subtitle="가로로 넘겨 10년 단위 대운과 해마다 바뀌는 세운을 확인할 수 있습니다.">
+      <div>
+        <h4 className="text-lg font-bold">대운</h4>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-4">{reversedDaewoon.map((item) => <FortuneColumn key={item.index} item={item} />)}</div>
+      </div>
+      <div className="mt-8 border-t pt-6">
+        <h4 className="text-lg font-bold">세운</h4>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-4">{reversedAnnualFortunes.map((item) => <FortuneColumn key={item.year} item={item} />)}</div>
+      </div>
+    </Section>
+  );
+}
+
+interface ReportContent {
+  overview: string;
+  dayPillar: string;
+  structure: string;
+  lifeFlow: string;
+}
+
+function getLocalReport(day: LuckyDay): ReportContent {
+  const monthSipsin = tr(day.pillars[2].branchSipsin, SIPSIN_KO);
+  const yongshin = `${day.yongshin.method === "johu" ? "조후" : "억부"}용신 ${ELEMENT_KO[day.yongshin.element]}`;
+  const earlyFortunes = day.daewoon.filter((item) => item.age < 50).slice(0, 4).map((item) => `${item.age}세 ${item.ganziHangul}`).join(", ");
+  return {
+    overview: `${day.dayPillarHangul} 일주를 중심으로 오행의 분포와 ${yongshin}, ${day.strength.gradeLabel}의 균형을 함께 살핀 사주입니다. 특정 오행 하나의 많고 적음보다 필요한 기운이 대운에서 어떻게 보완되는지가 중요합니다.\n\n좋은 사주는 모든 기운이 똑같은 사주가 아니라, 강점이 분명하면서 부족한 기운을 활용할 통로가 있는 사주입니다. 이 후보는 원국 점수와 초기 대운의 평균을 함께 반영해 상위권으로 선정되었습니다.`,
+    dayPillar: `${day.dayPillarHangul}(${day.dayPillar}) 일주는 자신의 기준과 생활 리듬을 바탕으로 재능을 현실에 연결하려는 성향으로 읽습니다. 구체적인 표현 방식은 월령과 주변 글자, 용신의 작용에 따라 달라지므로 일주 하나만으로 성격을 단정하지 않고 전체 구조와 함께 해석해야 합니다.`,
+    structure: `월지의 중심 십성은 ${monthSipsin}으로, 현재 화면에서는 이를 ${monthSipsin}격 관점의 기본 틀로 제시합니다. 격국은 재능이 사회에서 쓰이는 방식을 읽는 기준이며, 성립·파격·구응 여부는 천간 투출과 오행의 생극 흐름을 함께 검토해야 합니다.`,
+    lifeFlow: `10대부터 40대까지의 주요 대운은 ${earlyFortunes || "대운 시작 연령에 따라 순차적으로 전개"}됩니다. 각 시기에는 들어오는 오행이 원국의 용신을 돕는지, 일간의 강약을 과도하게 흔드는지를 중심으로 학업·관계·진로의 흐름을 읽으며, 좋은 운에는 확장하고 부담이 큰 운에는 기반을 다지는 전략이 적합합니다.`,
+  };
+}
+
+function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
+  const [content, setContent] = React.useState<ReportContent>(() => getLocalReport(day));
+  const [source, setSource] = React.useState<"local" | "gpt-5.5" | "loading">("local");
+
+  React.useEffect(() => {
+    setContent(getLocalReport(day));
+    const endpoint = process.env.NEXT_PUBLIC_SAJU_REPORT_API_URL;
+    if (!open || !endpoint) {
+      setSource("local");
+      return;
+    }
+    const controller = new AbortController();
+    setSource("loading");
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        report: {
+          pillars: day.pillars,
+          dayPillar: day.dayPillar,
+          monthBranchSipsin: day.pillars[2].branchSipsin,
+          elementQi: day.elementQi.percentages,
+          strength: day.strength,
+          yongshin: day.yongshin,
+          daewoon: day.daewoon.slice(0, 5),
+        },
+        output: {
+          language: "ko",
+          overview: "2 paragraphs",
+          dayPillar: "1 paragraph",
+          structure: "1 paragraph",
+          lifeFlow: "1 paragraph covering teens through forties",
+        },
+      }),
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Report API ${response.status}`);
+        return response.json() as Promise<ReportContent>;
+      })
+      .then((report) => {
+        if (report.overview && report.dayPillar && report.structure && report.lifeFlow) {
+          setContent(report);
+          setSource("gpt-5.5");
+        }
+      })
+      .catch((error) => {
+        if ((error as Error).name !== "AbortError") setSource("local");
+      });
+    return () => controller.abort();
+  }, [day, open]);
+
+  const sections = [
+    ["0. 전반적인 사주 해석", content.overview],
+    ["1. 일주론", content.dayPillar],
+    ["2. 격국론", content.structure],
+    ["3. 10대~40대 인생 흐름", content.lifeFlow],
+  ];
+
+  return (
+    <Section title="사주 해석" subtitle="사주 해석은 가능성과 경향을 설명하는 참고 콘텐츠입니다.">
+      <div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
+        <Sparkles className="size-3.5 text-primary" />
+        {source === "gpt-5.5" ? "GPT-5.5 해석" : source === "loading" ? "GPT-5.5 해석 생성 중…" : "기본 해설"}
+      </div>
+      <div className="space-y-4">
+        {sections.map(([title, text]) => (
+          <article key={title} className="rounded-md border border-border bg-background p-4 sm:p-5">
+            <h4 className="font-serif font-bold">{title}</h4>
+            <div className="mt-3 space-y-3 text-sm leading-7 text-foreground/80">
+              {text.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            </div>
+          </article>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+export function LuckyDayDetailDialog({ day, open, onOpenChange }: LuckyDayDetailDialogProps) {
+  if (!day) return null;
   const dateObj = new Date(`${day.date}T00:00:00`);
+  const correctionSign = day.timeCorrection.correctionMinutes > 0 ? "+" : "";
+  const adjustedTime = `${String(day.timeCorrection.adjustedHour).padStart(2, "0")}:${String(day.timeCorrection.adjustedMinute).padStart(2, "0")}`;
+  const locationLabel = day.location.matched ? day.location.label : `${day.location.input} 입력, ${day.location.label} 기준`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 sm:max-w-4xl">
-        <div className="space-y-5 p-5 sm:p-8">
+      <DialogContent className="max-h-[94vh] overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-card p-0 shadow-[0_12px_32px_rgba(36,30,34,0.15),0_2px_6px_rgba(36,30,34,0.08)] sm:max-w-[68.75rem] sm:rounded-xl">
+        <div className="space-y-5 p-4 sm:p-8">
           <DialogHeader className="items-center text-center">
-            <div className="flex items-center gap-2">
-              <Badge variant="default">Rank {day.rank}</Badge>
-              <Badge variant="secondary">Score {day.score.toFixed(1)}</Badge>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Badge className="rounded bg-gold-soft px-3 py-2 font-mono text-[10px] tracking-wider text-primary" variant="secondary">Rank {day.rank}</Badge>
+              <Badge className="rounded border border-border bg-background px-3 py-2 font-mono text-[10px] tracking-wide text-primary" variant="secondary">Score {day.score.toFixed(1)}</Badge>
             </div>
-            <DialogTitle className="pt-4 text-2xl font-semibold tracking-tight">
-              PREMIUM BIRTHDAY REPORT
-            </DialogTitle>
-            <DialogDescription>
-              삶의 지도와 나침반 (Life Guide & Compass)
-            </DialogDescription>
-            <div className="h-px w-full max-w-xl bg-border" />
-            <p className="text-sm font-medium">
-              {format(dateObj, "yyyy년 M월 d일 (EEE)", { locale: ko })} · {day.timeLabel}
+            <DialogTitle className="pt-3 font-serif text-2xl font-bold tracking-tight sm:text-3xl">상세 사주 리포트</DialogTitle>
+            <DialogDescription>{format(dateObj, "yyyy년 M월 d일 (EEE)", { locale: ko })} · {day.timeLabel}</DialogDescription>
+            <p className="text-xs leading-5 text-muted-foreground">
+              {day.gender === "M" ? "남아" : "여아"} · {locationLabel} · 경도 보정 {correctionSign}{day.timeCorrection.correctionMinutes}분 · 계산시각 {day.timeCorrection.adjustedDate} {adjustedTime}
             </p>
+            {day.scoring.capped && (
+              <p className="rounded bg-gold-soft px-3 py-1 text-[11px] text-primary">산식 원점수 {day.scoring.rawScore.toFixed(2)}점을 기준에 따라 100점으로 제한했습니다.</p>
+            )}
           </DialogHeader>
 
-          <ReportSajuCombination day={day} />
-          <ReportDaewoonTimeline day={day} />
-          <ReportElementRatio day={day} />
-          <ReportThemeList />
-          <ReportGoldenMessage day={day} />
+          <SajuTable day={day} />
+          <Interpretation day={day} open={open} />
+          <ElementPentagon day={day} />
+          <StarsTable day={day} />
+          <Yongshin day={day} />
+          <StrengthChart day={day} />
+          <FortuneFlow day={day} />
         </div>
-        <ReportBottomNav />
       </DialogContent>
     </Dialog>
   );

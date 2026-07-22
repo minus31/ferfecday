@@ -1,14 +1,15 @@
-# ferfecday Agent Notes
+# 생일선물 (BirthdayGift) Agent Notes
 
 ## Project
 
-- Name: `ferfecday`
+- Name: `BirthdayGift`
 - Purpose: Korean birth-date selection service that recommends auspicious delivery dates based on saju concepts.
-- Current state: Next.js MVP UI with mock result data. No real backend, saju engine, payment, ad SDK, or Supabase integration is implemented yet.
+- Current state: Toss mini app compatible static Next.js app. Saju scoring runs in the browser without a backend API route.
 
 ## Stack
 
-- Framework: Next.js App Router
+- Framework: Next.js App Router with static export
+- Toss: `@apps-in-toss/web-framework`, `ait build`
 - Language: TypeScript
 - UI: React, Tailwind CSS v4, shadcn-style components, Radix UI primitives
 - Date UI: `react-day-picker`, `date-fns`
@@ -17,21 +18,24 @@
 ## Commands
 
 - Install dependencies: `npm install`
-- Run dev server: `npm run dev`
-- Build: `npm run build`
+- Run Toss dev environment: `npm run dev`
+- Build Toss artifact: `npm run build`
+- Verify plain Next static export: `npm run next:build`
 - Start production server: `npm run start`
 - Lint script exists as `npm run lint`, but verify compatibility before relying on it.
 
 ## Routes
 
-- `/`: Home page. Lets the user choose an expected delivery date range, then routes to `/results?from=yyyy-MM-dd&to=yyyy-MM-dd`.
-- `/results`: Result page. Reads `from` and `to` from query params and renders Best 1 plus locked Best 2-5 cards from mock data.
+- `/`: Home page. Lets the user choose date range, gender, and delivery location text.
+- `/results`: Static result page. Reads query params and computes Top10 locally.
 
 ## Important Files
 
 - `app/page.tsx`: Home page and date-range submit flow.
-- `app/results/page.tsx`: Results page, mock lucky-day data, unlock state, detail dialog state.
-- `components/date-range-picker.tsx`: Date range picker with max 14-day selection.
+- `app/results/page.tsx`: Results page, local Top10 computation, detail dialog state.
+- `lib/lucky-days.ts`: Static/client-safe lucky day candidate generation and scoring.
+- `granite.config.ts`: Apps in Toss configuration.
+- `components/date-range-picker.tsx`: Date range picker with max 3-day selection.
 - `components/lucky-day-card.tsx`: Lucky-day card UI with locked and featured states.
 - `components/lucky-day-detail-dialog.tsx`: Detail modal for a selected lucky day.
 - `components/site-header.tsx`: Shared sticky header.
@@ -39,22 +43,18 @@
 
 ## Current Behavior Notes
 
-- Date ranges are limited to 14 days.
+- Date ranges are limited to 3 days.
 - Dates before the current date are disabled in the calendar.
-- Best 1 is always visible.
-- Best 2-5 are initially locked and can be unlocked locally by clicking the ad button.
 - Clicking an unlocked lucky-day card opens a detail dialog.
-- Result data is currently hardcoded in `app/results/page.tsx` as `MOCK_DAYS`.
+- Result data is computed from `@orrery/core` and local scoring modules.
 
 ## Known Issues
 
-- After selecting a full date range on the home page, the calendar popover stays open and can intercept clicks on `길일 찾기`. Pressing Escape closes it and routing works. This should be fixed by controlling popover open state and closing it when a valid range is selected.
 - `favicon.ico` is missing, causing a browser console 404.
 
 ## Product Direction From README
 
 - Start without a separate backend server.
-- Use Next.js Route Handlers / Server Actions as needed.
 - Planned backend/data stack: Supabase Postgres, Supabase Auth, Supabase Storage, Supabase Realtime.
 - Planned deployment: Vercel.
 - Planned monetization gates: ads and/or payment for Best 5/details.

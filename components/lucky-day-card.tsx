@@ -16,93 +16,60 @@ interface LuckyDayCardProps {
   onClick?: () => void;
 }
 
-type ContributionKey = "elements" | "sipseong" | "sinsal" | "daewoon";
+type ContributionKey = "base" | "sipseong" | "unseong" | "stars";
 
 const CONTRIBUTION_META: Record<
   ContributionKey,
   { label: string; color: string }
 > = {
-  elements: { label: "오행 균형 (Elements)", color: "bg-green-500" },
-  sipseong: { label: "십성 격국 (Sipseong)", color: "bg-violet-500" },
-  sinsal: { label: "길성 신살 (Sinsal)", color: "bg-orange-500" },
-  daewoon: { label: "대운 흐름 (Daewoon)", color: "bg-blue-500" },
+  base: { label: "신강신약 Base", color: "bg-emerald-500" },
+  sipseong: { label: "십성 격국", color: "bg-violet-500" },
+  unseong: { label: "운성·신살", color: "bg-sky-500" },
+  stars: { label: "길흉 가감", color: "bg-amber-500" },
 };
-
-function getScoreDetail(day: LuckyDay, label: string) {
-  return day.scoring.details.find((detail) => detail.label === label)?.value ?? 0;
-}
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function getContributions(day: LuckyDay) {
-  const elements = getScoreDetail(day, "오행 균형");
-  const sipseong = getScoreDetail(day, "십성 다양성");
-  const sinsal = getScoreDetail(day, "길성/신살");
-  const firstDaewoon = day.daewoon[0];
-  const daewoonBase =
-    (firstDaewoon?.isGongmang ? -8 : 0) +
-    (["長生", "冠帶", "建祿", "帝旺", "養"].includes(firstDaewoon?.unseong ?? "")
-      ? 8
-      : 0);
+  const sipseong = day.scoring.details
+    .filter((detail) => detail.label.startsWith("10장"))
+    .reduce((sum, detail) => sum + detail.value, 0);
+  const unseong = day.scoring.details
+    .filter((detail) => detail.label.startsWith("11장"))
+    .reduce((sum, detail) => sum + detail.value, 0);
+  const stars = day.scoring.details
+    .filter((detail) => detail.label.startsWith("12장"))
+    .reduce((sum, detail) => sum + detail.value, 0);
 
   return {
-    elements: clampPercent(70 + elements * 2),
-    sipseong: clampPercent(72 + sipseong * 3),
-    sinsal: clampPercent(72 + sinsal * 2),
-    daewoon: clampPercent(86 + daewoonBase),
+    base: clampPercent(day.strength.baseScore),
+    sipseong: clampPercent(80 + sipseong * 5),
+    unseong: clampPercent(80 + unseong * 12),
+    stars: clampPercent(80 + stars * 8),
   } satisfies Record<ContributionKey, number>;
 }
 
 function formatDateTime(day: LuckyDay) {
   const dateObj = new Date(`${day.date}T00:00:00`);
-  return `${format(dateObj, "yyyy.MM.dd (EEE)", { locale: ko })} · ${day.timeLabel}`;
-}
-
-function getFeatureTags(day: LuckyDay) {
-  const tags: string[] = [];
-  const elementValues = day.elementQi.percentages;
-  const maxElement = Object.entries(elementValues).sort((a, b) => b[1] - a[1])[0]?.[0];
-  const minElement = Object.entries(elementValues).sort((a, b) => a[1] - b[1])[0]?.[0];
-
-  const elementKo: Record<string, string> = {
-    tree: "목",
-    fire: "화",
-    earth: "토",
-    metal: "금",
-    water: "수",
-  };
-
-  if (day.score >= 90) tags.push("상위 균형");
-  else if (day.score >= 80) tags.push("우수 후보");
-  else tags.push("보완 후보");
-
-  if (day.specialSals.cheonul.length > 0) tags.push("천을귀인");
-  else if (day.specialSals.munchang.length > 0) tags.push("문창귀인");
-  else if (day.specialSals.geumyeo.length > 0) tags.push("금여록");
-  else if (maxElement) tags.push(`${elementKo[maxElement]} 기운 강세`);
-
-  if (day.specialSals.cheonduk.length > 0 || day.specialSals.wolduk.length > 0) {
-    tags.push("천월덕 보유");
-  } else if (day.gongmang.pillarIndices.length === 0) {
-    tags.push("공망 안정");
-  } else if (minElement) {
-    tags.push(`${elementKo[minElement]} 보완 필요`);
-  }
-
-  return tags.slice(0, 3);
+  const locationLabel = day.location.matched
+    ? day.location.label
+    : `${day.location.input}(${day.location.label} 기준)`;
+  return `${format(dateObj, "yyyy.MM.dd (EEE)", { locale: ko })} · ${day.timeLabel} · ${locationLabel}`;
 }
 
 function ScoreCircle({ score, muted = false }: { score: number; muted?: boolean }) {
   return (
     <div
       className={cn(
-        "flex size-24 shrink-0 flex-col items-center justify-center rounded-full text-center sm:size-32",
-        muted ? "bg-secondary text-muted-foreground" : "bg-primary text-primary-foreground"
+        "flex size-24 shrink-0 flex-col items-center justify-center rounded-[1.25rem] border text-center sm:size-28",
+        muted
+          ? "border-border/70 bg-secondary/60 text-muted-foreground"
+          : "border-primary/20 bg-primary text-primary-foreground shadow-[0_14px_30px_rgba(76,29,149,0.18)]"
       )}
     >
-      <span className="text-[10px] uppercase tracking-wide opacity-70">Score</span>
+      <span className="text-[10px] uppercase tracking-[0.24em] opacity-70">Score</span>
       <span className="mt-1 text-xl font-semibold sm:text-2xl">{score.toFixed(1)}</span>
     </div>
   );
@@ -112,7 +79,7 @@ function ScoreContributionBars({ day }: { day: LuckyDay }) {
   const contributions = getContributions(day);
 
   return (
-    <div className="space-y-4 border-t pt-5">
+    <div className="space-y-4 rounded-[1.25rem] border border-border/70 bg-secondary/40 p-4">
       <p className="text-sm font-medium text-muted-foreground">
         평가 요소별 밸런스 분석 (Score Contribution)
       </p>
@@ -127,7 +94,7 @@ function ScoreContributionBars({ day }: { day: LuckyDay }) {
               className="grid items-center gap-2 text-sm sm:grid-cols-[13rem_minmax(0,1fr)_3rem]"
             >
               <p className="font-medium">{meta.label}</p>
-              <div className="h-3 overflow-hidden rounded-sm bg-secondary">
+              <div className="h-3 overflow-hidden rounded-full bg-background/90">
                 <div className={cn("h-full", meta.color)} style={{ width: `${value}%` }} />
               </div>
               <p className="text-right font-medium text-muted-foreground">{value}%</p>
@@ -144,24 +111,22 @@ export function LuckyDayCard({
   featured = false,
   onClick,
 }: LuckyDayCardProps) {
-  const tags = getFeatureTags(day);
-
   return (
     <Card
       className={cn(
-        "overflow-hidden rounded-lg shadow-sm",
+        "overflow-hidden transition-transform duration-200 hover:-translate-y-0.5",
         featured
-          ? "border-2 border-amber-400 bg-amber-50/25"
-          : "border-border bg-card"
+          ? "border-primary/20 bg-gradient-to-br from-amber-50/70 via-white/90 to-primary/10"
+          : "border-border/70 bg-card/90"
       )}
     >
-      <CardContent className="space-y-5 p-5 sm:p-7">
+      <CardContent className="space-y-5 p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-4">
             <Badge
               variant={featured ? "default" : "secondary"}
               className={cn(
-                "h-10 min-w-36 justify-center rounded-md uppercase",
+                "h-10 min-w-36 justify-center rounded-full uppercase",
                 featured && "bg-amber-400 text-foreground hover:bg-amber-400"
               )}
             >
@@ -171,7 +136,7 @@ export function LuckyDayCard({
             </Badge>
 
             <div className="space-y-1">
-              <p className="text-xl font-semibold tracking-tight">
+              <p className="text-xl font-semibold tracking-tight text-foreground">
                 {formatDateTime(day)}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -183,20 +148,20 @@ export function LuckyDayCard({
           <ScoreCircle score={day.score} muted={!featured} />
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
-          {tags.map((tag) => (
-            <div
-              key={tag}
-              className="rounded-md border bg-secondary/70 px-3 py-3 text-center text-sm font-medium"
-            >
-              {tag}
-            </div>
-          ))}
+        {day.scoring.capped && (
+          <p className="-mt-3 text-right text-[11px] text-muted-foreground">
+            원점수 {day.scoring.rawScore.toFixed(2)} · 평가 기준에 따라 100점 상한 적용
+          </p>
+        )}
+
+        <div className="rounded-[1rem] border border-dashed border-primary/25 bg-primary/5 px-4 py-4">
+          <p className="text-xs font-semibold text-primary">한줄 요약</p>
+          <p className="mt-1 text-sm text-muted-foreground">해당 날짜의 핵심 해석이 여기에 제공될 예정입니다.</p>
         </div>
 
         {featured && <ScoreContributionBars day={day} />}
 
-        <div className="flex justify-end border-t pt-4">
+        <div className="flex justify-end border-t border-border/70 pt-4">
           <Button onClick={onClick} size="sm" className="min-w-36">
             Detail Report
             <ArrowRight />
