@@ -129,6 +129,7 @@ export interface LuckyDay {
     adjustedDate: string;
     adjustedHour: number;
     adjustedMinute: number;
+    calculationBasis: "corrected-solar-time";
   };
   score: number;
   dayPillar: string;
@@ -166,6 +167,14 @@ export interface LuckyDay {
     rawScore: number;
     capped: boolean;
     details: LuckyScoreDetail[];
+    daewoonScores: Array<{
+      index: number;
+      ganzi: string;
+      si: number;
+      gradeLabel: string;
+      k: number;
+      baseScore: number;
+    }>;
   };
 }
 

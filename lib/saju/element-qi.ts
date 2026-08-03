@@ -242,7 +242,7 @@ function isControlledBy(source: ElementQiKey, target: ElementQiKey) {
   return CONTROLS[source] === target;
 }
 
-function branchHasElement(branch: string, element: ElementQiKey) {
+export function branchHasElement(branch: string, element: ElementQiKey) {
   return HIDDEN_STEM_RATIOS[branch]?.some(
     (hidden) => hidden.ratio > 0 && hidden.element === element
   );

@@ -59,6 +59,12 @@ function formatDateTime(day: LuckyDay) {
   return `${format(dateObj, "yyyy.MM.dd (EEE)", { locale: ko })} · ${day.timeLabel} · ${locationLabel}`;
 }
 
+function formatCorrectionNotice(day: LuckyDay) {
+  const correction = day.timeCorrection.correctionMinutes;
+  const signedCorrection = `${correction > 0 ? "+" : ""}${correction}`;
+  return `출생지 위치 기준 ${signedCorrection}분 조정한 시각으로 계산`;
+}
+
 function ScoreCircle({ score, muted = false }: { score: number; muted?: boolean }) {
   return (
     <div
@@ -141,6 +147,9 @@ export function LuckyDayCard({
               </p>
               <p className="text-sm text-muted-foreground">
                 일주 {day.dayPillarHangul}({day.dayPillar})
+              </p>
+              <p className="text-[11px] leading-4 text-muted-foreground/80">
+                {formatCorrectionNotice(day)}
               </p>
             </div>
           </div>

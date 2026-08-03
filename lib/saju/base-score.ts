@@ -23,9 +23,10 @@ export interface BaseScoringResult {
   score: number;
   rawScore: number;
   details: LuckyScoreDetail[];
+  daewoonBaseScores: DaewoonBaseScore[];
 }
 
-interface DaewoonBaseScore {
+export interface DaewoonBaseScore {
   index: number;
   ganzi: string;
   si: number;
@@ -308,7 +309,7 @@ function calculateDaewoonBaseScores(
   result: SajuResult,
   elementQi: ElementQiResult
 ): DaewoonBaseScore[] {
-  return result.daewoon.slice(0, 4).map((daewoon) => {
+  return result.daewoon.slice(0, 8).map((daewoon) => {
     const daewoonElementQi = applyDaewoonToElementQi(elementQi, daewoon);
     const daewoonStrength = calculateStrengthIndex(result, daewoonElementQi);
 
@@ -368,5 +369,6 @@ export function calculateBaseScoring(
     score: round(clampScore(rawScore)),
     rawScore: round(rawScore),
     details,
+    daewoonBaseScores,
   };
 }

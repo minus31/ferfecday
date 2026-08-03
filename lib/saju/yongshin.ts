@@ -4,6 +4,8 @@ import type { SajuResult } from "@orrery/core/types";
 import {
   ELEMENT_KEYS,
   GENERATES,
+  branchHasElement,
+  getElement,
   getElementRole,
   type ElementQiBreakdown,
   type ElementQiKey,
@@ -42,6 +44,20 @@ const ELEMENT_HANJA: Record<ElementQiKey, string> = {
   earth: "土",
   metal: "金",
   water: "水",
+};
+
+const ELEMENT_KO: Record<ElementQiKey, string> = {
+  tree: "목", fire: "화", earth: "토", metal: "금", water: "수",
+};
+
+const STEM_KO: Record<string, string> = {
+  甲: "갑", 乙: "을", 丙: "병", 丁: "정", 戊: "무",
+  己: "기", 庚: "경", 辛: "신", 壬: "임", 癸: "계",
+};
+
+const BRANCH_KO: Record<string, string> = {
+  子: "자", 丑: "축", 寅: "인", 卯: "묘", 辰: "진", 巳: "사",
+  午: "오", 未: "미", 申: "신", 酉: "유", 戌: "술", 亥: "해",
 };
 
 const POSITION_PRIORITY: Record<string, number> = {
@@ -179,6 +195,20 @@ export function calculateYongshin(
 
   const representative = candidates[0] ?? null;
   if (representative) representativeSource = representative.source;
+  const firstYongshinDaewoon = result.daewoon.find((item) =>
+    getElement(item.ganzi[0]) === element || branchHasElement(item.ganzi[1], element),
+  );
+
+  let message: string;
+  if (representative?.source === "fallback-heesin" && fallbackElement) {
+    message = `원국에 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]}) 용신 글자가 없어, 이를 생하는 ${ELEMENT_KO[fallbackElement]}(${ELEMENT_HANJA[fallbackElement]}) 희신의 ${STEM_KO[representative.stem]}(${representative.stem})을 보완 기준으로 삼습니다.`;
+  } else if (representative) {
+    message = `${method === "johu" ? "조후" : "억부"} 기준 용신은 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]})이며 대표 글자는 ${STEM_KO[representative.stem]}(${representative.stem})입니다.`;
+  } else if (firstYongshinDaewoon) {
+    message = `원국에 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]}) 용신과 이를 돕는 희신 글자가 뚜렷하지 않지만, 아이의 ${firstYongshinDaewoon.age}세 대운 ${[...firstYongshinDaewoon.ganzi].map((char) => STEM_KO[char] ?? BRANCH_KO[char] ?? char).join("")}(${firstYongshinDaewoon.ganzi})부터 보완 기운이 들어옵니다.`;
+  } else {
+    message = `원국에 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]}) 용신과 이를 돕는 희신 글자가 뚜렷하지 않아, 생활 환경과 후천적 경험을 통한 보완이 중요합니다.`;
+  }
 
   return {
     johuStatus: johu.status,
@@ -192,8 +222,6 @@ export function calculateYongshin(
     representativeSource,
     candidates,
     fallbackElement,
-    message: representative
-      ? `${method === "johu" ? "조후" : "억부"} 기준 용신은 ${ELEMENT_HANJA[element]}이며 대표 글자는 ${representative.stem}입니다.`
-      : `원국에 ${ELEMENT_HANJA[element]} 용신 글자가 없어 대운 유입에서 보완합니다.`,
+    message,
   };
 }

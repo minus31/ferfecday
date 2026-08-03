@@ -52,19 +52,42 @@ const BRANCH_HANGUL: Record<string, string> = {
   "亥": "해",
 };
 const HOUR_SLOTS = [
-  { hour: 0, label: "00:00 자시" },
-  { hour: 2, label: "02:00 축시" },
-  { hour: 4, label: "04:00 인시" },
-  { hour: 6, label: "06:00 묘시" },
-  { hour: 8, label: "08:00 진시" },
-  { hour: 10, label: "10:00 사시" },
-  { hour: 12, label: "12:00 오시" },
-  { hour: 14, label: "14:00 미시" },
-  { hour: 16, label: "16:00 신시" },
-  { hour: 18, label: "18:00 유시" },
-  { hour: 20, label: "20:00 술시" },
-  { hour: 22, label: "22:00 해시" },
+  { hour: 0, label: "00:00~02:00 자시" },
+  { hour: 2, label: "02:00~04:00 축시" },
+  { hour: 4, label: "04:00~06:00 인시" },
+  { hour: 6, label: "06:00~08:00 묘시" },
+  { hour: 8, label: "08:00~10:00 진시" },
+  { hour: 10, label: "10:00~12:00 사시" },
+  { hour: 12, label: "12:00~14:00 오시" },
+  { hour: 14, label: "14:00~16:00 미시" },
+  { hour: 16, label: "16:00~18:00 신시" },
+  { hour: 18, label: "18:00~20:00 유시" },
+  { hour: 20, label: "20:00~22:00 술시" },
+  { hour: 22, label: "22:00~24:00 해시" },
 ];
+
+// @orrery/core 0.4.2는 시진 경계를 01:30, 03:30, ...으로 고정한다.
+// 앱은 출생지 경도로 보정한 태양시를 사용하므로, 표준 시진 경계
+// 01:00, 03:00, ...과 일치시키기 위해 엔진 입력에만 30분을 더한다.
+const ORRERY_FIXED_HOUR_BOUNDARY_OFFSET_MINUTES = 30;
+
+function adaptCorrectedTimeForOrrery(adjusted: ReturnType<typeof adjustBirthTimeByLongitude>) {
+  const engineTime = new Date(Date.UTC(
+    adjusted.year,
+    adjusted.month - 1,
+    adjusted.day,
+    adjusted.hour,
+    adjusted.minute + ORRERY_FIXED_HOUR_BOUNDARY_OFFSET_MINUTES,
+  ));
+
+  return {
+    year: engineTime.getUTCFullYear(),
+    month: engineTime.getUTCMonth() + 1,
+    day: engineTime.getUTCDate(),
+    hour: engineTime.getUTCHours(),
+    minute: engineTime.getUTCMinutes(),
+  };
+}
 
 interface ParsedDate {
   year: number;
@@ -169,6 +192,7 @@ function scoreSaju(result: SajuResult) {
     score: baseScoring.score,
     rawScore: baseScoring.rawScore,
     details,
+    daewoonBaseScores: baseScoring.daewoonBaseScores,
     elementQi: {
       totals: elementQi.totals,
       percentages: elementQi.percentages,
@@ -233,7 +257,9 @@ function serializeCandidate(
       sinsal: item.sinsal,
       isGongmang: item.isGongmang,
     })),
-    annualFortunes: Array.from({ length: 10 }, (_, index) => {
+    annualFortunes: Array.from({
+      length: Math.max(10, (result.daewoon.at(-1)?.age ?? 91) + 9),
+    }, (_, index) => {
       const year = birthYear + index;
       const ganzi = getYearGanzi(year);
       const [stem, branch] = [...ganzi];
@@ -268,6 +294,7 @@ function serializeCandidate(
       rawScore: scoring.rawScore,
       capped: scoring.rawScore > 100,
       details: scoring.details,
+      daewoonScores: scoring.daewoonBaseScores,
     },
   };
 }
@@ -307,12 +334,13 @@ export function calculateLuckyDays({
         minute: 0,
         longitude: location.longitude,
       });
+      const engineTime = adaptCorrectedTimeForOrrery(adjusted);
       const result = calculateSaju({
-        year: adjusted.year,
-        month: adjusted.month,
-        day: adjusted.day,
-        hour: adjusted.hour,
-        minute: adjusted.minute,
+        year: engineTime.year,
+        month: engineTime.month,
+        day: engineTime.day,
+        hour: engineTime.hour,
+        minute: engineTime.minute,
         gender,
         latitude: location.latitude,
         longitude: location.longitude,
@@ -324,6 +352,7 @@ export function calculateLuckyDays({
         adjustedDate: formatDateUTC(Date.UTC(adjusted.year, adjusted.month - 1, adjusted.day)),
         adjustedHour: adjusted.hour,
         adjustedMinute: adjusted.minute,
+        calculationBasis: "corrected-solar-time",
       });
     })
   );
