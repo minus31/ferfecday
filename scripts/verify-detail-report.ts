@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 import { calculateLuckyDays } from "@/lib/lucky-days";
-import { buildIntegratedSajuReport, sanitizeSajuExplanation } from "@/lib/saju/integrated-report";
+import { buildBabySummary, buildIntegratedSajuReport, sanitizeSajuExplanation } from "@/lib/saju/integrated-report";
 
 assert.equal(
   sanitizeSajuExplanation("TR_DW_11(육해살 대운) — 내가 水를 쓴다."),
@@ -21,6 +21,9 @@ assert.equal(response.results.length, 3);
 for (const day of response.results) {
   assert.match(day.timeLabel, /^\d{2}:00~\d{2}:00 [가-힣]+시$/);
   assert.ok(day.annualFortunes.length >= 100, "전체 대운 선택에 필요한 세운이 부족합니다.");
+  const babySummary = buildBabySummary(day);
+  assert.equal((babySummary.match(/[.!?](?:\s|$)/g) ?? []).length, 3, "아이 기질 요약은 3문장이어야 합니다.");
+  assert.match(babySummary, /부모님께서 맞이할 아기/);
 
   const report = buildIntegratedSajuReport(day);
   const userText = Object.values(report.content).join("\n");

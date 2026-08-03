@@ -53,8 +53,47 @@ const YUKA_BY_ELEMENT: Record<keyof typeof ELEMENT_KO, string> = {
   water: "충분한 휴식과 경청, 독서와 탐구처럼 생각을 차분히 확장하는 시간을 지켜 주세요.",
 };
 
+const ROLE_CHILD_TRAIT: Record<keyof LuckyDay["strength"]["roleQi"], string> = {
+  bigeop: "자기 생각이 분명하고 스스로 해보려는 힘",
+  siksang: "호기심을 말과 행동으로 표현하는 창의성",
+  jaeseong: "목표를 현실적인 결과로 이어가는 꾸준함",
+  gwanseong: "약속과 질서를 소중히 여기는 책임감",
+  insung: "배운 것을 깊이 받아들이는 이해력과 공감력",
+};
+
+const STRENGTH_CHILD_TONE: Record<LuckyDay["strength"]["grade"], string> = {
+  "extremely-strong": "주도성이 매우 강해 자신의 방향을 힘있게 개척하려는 모습이 두드러질 수 있습니다.",
+  "slightly-strong": "건강한 자신감을 바탕으로 새로운 일을 주도하면서도 주변과 균형을 맞출 수 있습니다.",
+  neutral: "상황에 맞춰 유연하게 반응하며 여러 기질을 비교적 고르게 펼칠 수 있습니다.",
+  "slightly-weak": "주변을 세심하게 살피고 충분히 생각한 뒤 움직이는 신중한 아이로 성장할 가능성이 큽니다.",
+  "extremely-weak": "환경과 관계를 민감하게 받아들이는 만큼 안정감 속에서 섬세한 장점을 키우기 좋습니다.",
+};
+
+const ELEMENT_GROWTH_TONE: Record<keyof typeof ELEMENT_KO, string> = {
+  tree: "성장과 계획의 힘",
+  fire: "표현력과 따뜻한 활력",
+  earth: "안정감과 생활의 중심",
+  metal: "판단력과 분명한 기준",
+  water: "사고의 깊이와 유연성",
+};
+
 function formatGanzi(ganzi: string) {
   return `${[...ganzi].map((char) => GANJI_READING[char] ?? char).join("")}(${ganzi})`;
+}
+
+/** 결과 카드에서 부모에게 보여주는 3문장 아기 기질 요약. */
+export function buildBabySummary(day: LuckyDay) {
+  const profile = getDayPillarProfile(day.dayPillar);
+  const dominantRole = (Object.keys(day.strength.roleQi) as Array<keyof LuckyDay["strength"]["roleQi"]>)
+    .reduce((best, role) => day.strength.roleQi[role].percentage > day.strength.roleQi[best].percentage ? role : best);
+  const traits = profile?.traits.slice(0, 2).join("과 ") ?? "자신만의 리듬과 잠재력";
+  const element = day.yongshin.element;
+
+  return sanitizeSajuExplanation([
+    `부모님께서 맞이할 아기는 ${day.dayPillarHangul}(${day.dayPillar}) 일주의 ${traits} 같은 특징을 바탕으로 자기만의 색깔을 만들어갈 가능성이 큽니다.`,
+    `${ROLE_CHILD_TRAIT[dominantRole]}이 특히 돋보이며, ${STRENGTH_CHILD_TONE[day.strength.grade]}`,
+    `성장 과정에서 ${ELEMENT_KO[element]}(${({ tree: "木", fire: "火", earth: "土", metal: "金", water: "水" } as const)[element]}) 기운이 상징하는 ${ELEMENT_GROWTH_TONE[element]}을 길러주면 타고난 장점을 더욱 편안하게 펼칠 수 있습니다.`,
+  ].join(" "));
 }
 
 /** 내부 코드와 작성자 관점 표현을 사용자용 문장으로 정리한다. */

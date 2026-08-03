@@ -100,16 +100,14 @@ function rotateElements(dayElement: FiveElement) {
   return [...ELEMENT_ORDER.slice(index), ...ELEMENT_ORDER.slice(0, index)];
 }
 
-function Section({ title, subtitle, children }: {
+function Section({ title, children }: {
   title: string;
-  subtitle?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-[0_4px_12px_rgba(36,30,34,0.08)] sm:p-6">
       <div>
         <h3 className="font-serif text-xl font-bold tracking-tight sm:text-2xl">{title}</h3>
-        {subtitle && <p className="mt-1 text-sm leading-6 text-muted-foreground">{subtitle}</p>}
       </div>
       <div className="mt-5 min-w-0">{children}</div>
     </section>
@@ -145,7 +143,7 @@ function SajuTable({ day }: { day: LuckyDay }) {
   ];
 
   return (
-    <Section title="사주 테이블" subtitle="천간과 지지는 흐름을 읽을 수 있도록 각각 한 줄로 유지했습니다.">
+    <Section title="사주 테이블">
       <div className="overflow-x-auto rounded-md border border-border">
         <div className="min-w-[34rem]">
         <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-xs font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
@@ -183,7 +181,7 @@ function ElementPentagon({ day }: { day: LuckyDay }) {
   }).join(" ");
 
   return (
-    <Section title="오행 기도" subtitle="가장 위의 꼭짓점은 일간 오행이며, 시계 방향으로 목·화·토·금·수의 생 흐름을 따릅니다.">
+    <Section title="오행 기도">
       <div className="mx-auto max-w-xl">
         <svg viewBox="0 0 100 102" className="h-auto w-full" role="img" aria-label="오행 기도 오각형 차트">
           {[1, 0.66, 0.33].map((scale) => (
@@ -231,9 +229,8 @@ function getPillarStars(day: LuckyDay, index: number) {
 }
 
 function StarsTable({ day }: { day: LuckyDay }) {
-  const allStars = Array.from(new Set(day.pillars.flatMap((_, index) => getPillarStars(day, index))));
   return (
-    <Section title="신살과 길성" subtitle={allStars.length ? allStars.join(", ") : "두드러진 특수 길성·신살이 없습니다."}>
+    <Section title="신살과 길성">
       <div className="overflow-x-auto rounded-md border border-border">
         <div className="min-w-[34rem]">
         <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-xs font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
@@ -272,7 +269,7 @@ function StrengthChart({ day }: { day: LuckyDay }) {
   const labels = ["극신약", "태신약", "약신약", "중화신약", "중화신강", "약신강", "태신강", "극신강"];
   const position = Math.max(0, Math.min(100, (day.strength.si + 50) / 100 * 100));
   return (
-    <Section title="신강 / 신약 지수" subtitle={`${day.strength.gradeLabel} · SI ${day.strength.si.toFixed(2)}%`}>
+    <Section title="신강 / 신약 지수">
       <div className="rounded-md border border-border bg-background p-4 sm:p-6">
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span>득령 {day.strength.roleQi.insung.percentage >= 20 ? "●" : "×"}</span>
@@ -364,7 +361,7 @@ function FortuneFlow({ day }: { day: LuckyDay }) {
     .reverse();
 
   return (
-    <Section title="대운과 세운" subtitle="대운을 선택하면 그 시기에 해당하는 해마다의 세운이 아래에 표시됩니다.">
+    <Section title="대운과 세운">
       <div>
         <h4 className="text-lg font-bold">대운</h4>
         <div className="mt-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-4">{reversedDaewoon.map((item) => (
@@ -470,7 +467,7 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
   ];
 
   return (
-    <Section title="사주 해석" subtitle="사주 해석은 가능성과 경향을 설명하는 참고 콘텐츠입니다.">
+    <Section title="사주 해석">
       <div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
         <Sparkles className="size-3.5 text-primary" />
         {source === "gpt-5.5" ? "GPT-5.5 해석" : source === "loading" ? "GPT-5.5 해석 생성 중…" : "기본 해설"}
