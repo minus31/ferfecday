@@ -3,7 +3,20 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Sparkles } from "lucide-react";
+import {
+  Brain,
+  ChevronDown,
+  Compass,
+  Heart,
+  House,
+  MessageCircle,
+  Route,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  WalletCards,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,9 +29,11 @@ import {
 import type { LuckyAnnualFortune, LuckyDaewoon, LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
 import { getDayPillarProfile } from "@/lib/saju/day-pillar-profiles";
 import {
+  buildFriendlySajuSections,
   buildIntegratedSajuReport,
-  sanitizeSajuExplanation,
-  type IntegratedReportContent,
+  sanitizeFriendlySajuText,
+  type FriendlyReportSection,
+  type FriendlySectionIcon,
 } from "@/lib/saju/integrated-report";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +88,19 @@ const GENERATES: Record<FiveElement, FiveElement> = {
 };
 const CONTROLS: Record<FiveElement, FiveElement> = {
   tree: "earth", earth: "water", water: "fire", fire: "metal", metal: "tree",
+};
+
+const FRIENDLY_SECTION_ICON: Record<FriendlySectionIcon, LucideIcon> = {
+  sparkles: Sparkles,
+  heart: Heart,
+  brain: Brain,
+  message: MessageCircle,
+  users: Users,
+  shield: ShieldCheck,
+  compass: Compass,
+  wallet: WalletCards,
+  home: House,
+  route: Route,
 };
 
 function tr(value: string, table: Record<string, string>) {
@@ -386,11 +414,14 @@ function FortuneFlow({ day }: { day: LuckyDay }) {
 function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
   const dayPillarProfile = getDayPillarProfile(day.dayPillar);
   const integratedReport = React.useMemo(() => buildIntegratedSajuReport(day), [day]);
-  const [content, setContent] = React.useState<IntegratedReportContent>(() => integratedReport.content);
+  const localSections = React.useMemo(() => buildFriendlySajuSections(day), [day]);
+  const [sections, setSections] = React.useState<FriendlyReportSection[]>(() => localSections);
+  const [openSectionId, setOpenSectionId] = React.useState(localSections[0]?.id ?? "");
   const [source, setSource] = React.useState<"local" | "gpt-5.5" | "loading">("local");
 
   React.useEffect(() => {
-    setContent(integratedReport.content);
+    setSections(localSections);
+    setOpenSectionId(localSections[0]?.id ?? "");
     const endpoint = process.env.NEXT_PUBLIC_SAJU_REPORT_API_URL;
     if (!open || !endpoint) {
       setSource("local");
@@ -425,46 +456,39 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
         output: {
           language: "ko",
           audience: "parents expecting this baby; describe the child's temperament and life tendencies",
-          style: "warm parent-facing Korean, no internal rule IDs, pair every Hanja with Hangul reading",
-          overview: "2 paragraphs",
-          dayPillar: "5 structured paragraphs using dayPillarProfile and the full chart",
-          structure: "1 paragraph",
-          talent: "2-4 paragraphs covering strengths, aptitude and work style",
-          parenting: "1-3 practical, non-diagnostic coaching paragraphs",
-          lifeFlow: "8 decade entries covering the first through eighth daewoon",
+          style: "plain, warm Korean for non-experts; never use internal codes or technical terms such as SI, gido, yongshin, gyeokguk or daewoon",
+          sections: "return 10 items with id, icon, friendly chart-specific title and 1-3 plain-language paragraphs",
         },
       }),
       signal: controller.signal,
     })
       .then((response) => {
         if (!response.ok) throw new Error(`Report API ${response.status}`);
-        return response.json() as Promise<Partial<IntegratedReportContent>>;
+        return response.json() as Promise<{ sections?: Array<Partial<FriendlyReportSection>> }>;
       })
       .then((report) => {
-        if (report.overview && report.dayPillar && report.structure && report.lifeFlow) {
-          setContent(Object.fromEntries(
-            Object.entries({ ...integratedReport.content, ...report }).map(([key, value]) => [
-              key,
-              sanitizeSajuExplanation(value),
-            ]),
-          ) as unknown as IntegratedReportContent);
+        const generatedSections = report.sections
+          ?.filter((section) => typeof section.title === "string" && typeof section.body === "string")
+          .map((section, index) => ({
+            id: `${section.id || "section"}-${index + 1}`,
+            icon: typeof section.icon === "string" && Object.hasOwn(FRIENDLY_SECTION_ICON, section.icon)
+              ? section.icon as FriendlySectionIcon
+              : localSections[index]?.icon ?? "sparkles",
+            title: sanitizeFriendlySajuText(section.title as string),
+            body: sanitizeFriendlySajuText(section.body as string),
+          }));
+        if (generatedSections && generatedSections.length >= 8 && generatedSections.length <= 12) {
+          setSections(generatedSections);
           setSource("gpt-5.5");
+        } else {
+          setSource("local");
         }
       })
       .catch((error) => {
         if ((error as Error).name !== "AbortError") setSource("local");
       });
     return () => controller.abort();
-  }, [day, integratedReport, open]);
-
-  const sections = [
-    ["1. 전반적인 사주 해석", content.overview],
-    ["2. 일주론", content.dayPillar],
-    ["3. 격국론", content.structure],
-    ["4. 평생의 성공과 재능", content.talent],
-    ["5. 사주의 특징과 양육 솔루션", content.parenting],
-    ["6. 10대~80대 대운 흐름", content.lifeFlow],
-  ];
+  }, [day, integratedReport, localSections, open]);
 
   return (
     <Section title="사주 해석">
@@ -472,25 +496,49 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
         <Sparkles className="size-3.5 text-primary" />
         {source === "gpt-5.5" ? "GPT-5.5 해석" : source === "loading" ? "GPT-5.5 해석 생성 중…" : "기본 해설"}
       </div>
-      <div className="space-y-4">
-        {sections.map(([title, text], index) => (
-          <article key={title} className="rounded-md border border-border bg-background p-4 sm:p-5">
-            <h4 className="font-serif font-bold">{title}</h4>
-            <div className="mt-3 space-y-3 text-sm leading-7 text-foreground/80">
-              {text.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            </div>
-            {index === 1 && dayPillarProfile && (
-              <a
-                href={dayPillarProfile.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex text-xs font-medium text-primary underline-offset-4 hover:underline"
+      <div className="overflow-hidden rounded-xl border border-border bg-background">
+        {sections.map((section, index) => {
+          const expanded = section.id === openSectionId;
+          const Icon = FRIENDLY_SECTION_ICON[section.icon];
+          const contentId = `saju-section-${section.id}`;
+          return (
+            <article key={section.id} className={cn(index > 0 && "border-t border-border")}>
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={contentId}
+                onClick={() => setOpenSectionId(expanded ? "" : section.id)}
+                className="flex w-full items-center gap-3 px-3 py-4 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5"
               >
-                참고: 현대인의 사주산책 {dayPillarProfile.name} 원문
-              </a>
-            )}
-          </article>
-        ))}
+                <Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                <span className="min-w-0 flex-1 text-sm font-semibold leading-6 text-foreground sm:text-base">
+                  {section.title}
+                </span>
+                <ChevronDown
+                  className={cn("size-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")}
+                  aria-hidden="true"
+                />
+              </button>
+              {expanded && (
+                <div id={contentId} className="border-t border-border/70 bg-card px-4 py-5 sm:px-12 sm:py-6">
+                  <div className="space-y-3 text-sm leading-7 text-foreground/80 sm:text-[15px]">
+                    {section.body.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                  </div>
+                  {index === 0 && dayPillarProfile && (
+                    <a
+                      href={dayPillarProfile.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex text-xs font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      참고 자료 보기
+                    </a>
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     </Section>
   );

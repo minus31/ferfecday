@@ -26,7 +26,7 @@
 ### AI 사주 해석 연결
 
 - 상세 리포트는 `NEXT_PUBLIC_SAJU_REPORT_API_URL`이 설정되면 해당 보호 API에 사주 데이터를 POST한다.
-- 요청 모델은 `gpt-5.5`이며 응답은 `overview`, `dayPillar`, `structure`, `talent`, `parenting`, `lifeFlow` 문자열을 반환한다. 기존 4개 필드만 반환해도 로컬의 재능·양육 해설을 유지한다.
+- 요청 모델은 `gpt-5.5`이며 응답은 사용자 친화적인 제목과 본문을 가진 `sections` 배열 8~12개를 반환한다. 권장값은 10개이며 각 항목은 `id`, `icon`, `title`, `body`를 가진다.
 - OpenAI API 키는 정적 앱에 넣지 않는다. Supabase Edge Function 등 서버 측 보호 API에서만 관리한다.
 - URL이 없거나 호출에 실패하면 화면은 내장 기본 해설을 사용한다.
 

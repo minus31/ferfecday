@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 
 import { calculateLuckyDays } from "@/lib/lucky-days";
-import { buildBabySummary, buildIntegratedSajuReport, sanitizeSajuExplanation } from "@/lib/saju/integrated-report";
+import {
+  buildBabySummary,
+  buildFriendlySajuSections,
+  buildIntegratedSajuReport,
+  sanitizeSajuExplanation,
+} from "@/lib/saju/integrated-report";
 
 assert.equal(
   sanitizeSajuExplanation("TR_DW_11(육해살 대운) — 내가 水를 쓴다."),
@@ -17,6 +22,7 @@ const response = calculateLuckyDays({
 
 assert.equal(response.candidates, 36);
 assert.equal(response.results.length, 3);
+const friendlyTitleSignatures = new Set<string>();
 
 for (const day of response.results) {
   assert.match(day.timeLabel, /^\d{2}:00~\d{2}:00 [가-힣]+시$/);
@@ -24,6 +30,18 @@ for (const day of response.results) {
   const babySummary = buildBabySummary(day);
   assert.equal((babySummary.match(/[.!?](?:\s|$)/g) ?? []).length, 3, "아이 기질 요약은 3문장이어야 합니다.");
   assert.match(babySummary, /부모님께서 맞이할 아기/);
+  const friendlySections = buildFriendlySajuSections(day);
+  friendlyTitleSignatures.add(friendlySections.map((section) => section.title).join("|"));
+  assert.equal(friendlySections.length, 10, "화면용 해설은 10개 주제여야 합니다.");
+  assert.equal(new Set(friendlySections.map((section) => section.id)).size, 10, "해설 주제 ID가 중복됩니다.");
+  const friendlyText = friendlySections.map((section) => `${section.title}\n${section.body}`).join("\n");
+  assert.doesNotMatch(
+    friendlyText,
+    /\bSI\b|기도|용신|희신|일주론|격국|대운|십성|신강|신약|원국|생조|극설|TR_DW|GYEOK|SIPSEONG/i,
+    "일반인용 해설에 전문·내부 용어가 남아 있습니다.",
+  );
+  assert.ok(friendlySections.every((section) => section.title.length >= 10 && section.body.length >= 80));
+  assert.ok(friendlySections.every((section) => section.title.length <= 70), "모바일에서 읽기에는 해설 제목이 너무 깁니다.");
 
   const report = buildIntegratedSajuReport(day);
   const userText = Object.values(report.content).join("\n");
@@ -67,5 +85,7 @@ for (const day of response.results) {
     assert.match(day.yongshin.message, /희신/);
   }
 }
+
+assert.ok(friendlyTitleSignatures.size > 1, "사주가 달라도 사용자용 해설 제목이 모두 같습니다.");
 
 console.log("detail-report verification: ok");

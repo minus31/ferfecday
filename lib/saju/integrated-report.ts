@@ -22,6 +22,25 @@ export interface IntegratedReportResult {
   matchedRuleIds: string[];
 }
 
+export type FriendlySectionIcon =
+  | "sparkles"
+  | "heart"
+  | "brain"
+  | "message"
+  | "users"
+  | "shield"
+  | "compass"
+  | "wallet"
+  | "home"
+  | "route";
+
+export interface FriendlyReportSection {
+  id: string;
+  icon: FriendlySectionIcon;
+  title: string;
+  body: string;
+}
+
 const SIPSIN_KO: Record<string, string> = {
   本元: "비견", 比肩: "비견", 劫財: "겁재", 食神: "식신", 傷官: "상관",
   偏財: "편재", 正財: "정재", 偏官: "편관", 正官: "정관", 偏印: "편인", 正印: "정인",
@@ -76,6 +95,218 @@ const ELEMENT_GROWTH_TONE: Record<keyof typeof ELEMENT_KO, string> = {
   metal: "판단력과 분명한 기준",
   water: "사고의 깊이와 유연성",
 };
+
+type RoleKey = keyof LuckyDay["strength"]["roleQi"];
+
+const ROLE_FRIENDLY_COPY: Record<RoleKey, { title: string; body: string }> = {
+  bigeop: {
+    title: "‘내가 해볼래요’가 자연스러운 독립형 아이",
+    body: "자기 생각과 방식이 분명하고, 직접 선택하고 움직일 때 자신감이 커집니다. 혼자 해내는 힘은 충분하니 협동 과정에서 차례를 기다리고 다른 의견을 받아들이는 경험을 함께 만들어 주세요.",
+  },
+  siksang: {
+    title: "보고 느낀 것을 자기 방식으로 표현하는 아이",
+    body: "호기심을 말, 글, 그림, 몸짓처럼 눈에 보이는 결과로 바꾸는 힘이 좋습니다. 정답을 빨리 알려주기보다 ‘어떻게 생각했어?’라고 물어보면 아이만의 창의성이 더 풍성하게 자랍니다.",
+  },
+  jaeseong: {
+    title: "목표를 세우면 차근차근 결과를 만드는 아이",
+    body: "해야 할 일과 얻고 싶은 결과를 현실적으로 살피는 감각이 돋보입니다. 작은 목표를 직접 정하고 완료하는 경험을 쌓게 하면 책임감과 생활력이 자연스럽게 강점으로 자리 잡습니다.",
+  },
+  gwanseong: {
+    title: "약속과 기준을 소중히 여기는 책임감 있는 아이",
+    body: "규칙을 이해하고 맡은 역할을 잘 해내려는 마음이 큽니다. 잘해야 사랑받는다고 느끼지 않도록 결과뿐 아니라 시도와 과정도 충분히 인정해 주는 것이 중요합니다.",
+  },
+  insung: {
+    title: "깊이 이해하고 오래 기억하는 생각 많은 아이",
+    body: "관찰하고 배운 내용을 자기 안에서 충분히 소화한 뒤 움직이는 편입니다. 재촉하기보다 질문하고 기다려 주면 이해력과 공감 능력이 함께 자라 든든한 지혜가 됩니다.",
+  },
+};
+
+const STRENGTH_FRIENDLY_COPY: Record<LuckyDay["strength"]["grade"], { title: string; body: string }> = {
+  "extremely-strong": {
+    title: "큰 파도처럼 힘차지만, 방향을 함께 맞춰 주세요",
+    body: "자기 의지와 추진력이 매우 선명해 스스로 길을 만들려는 힘이 큽니다. 억누르기보다 선택에 따른 책임을 알려주고, 양보와 협력이 더 큰 성취를 만든다는 경험을 자주 보여 주세요.",
+  },
+  "slightly-strong": {
+    title: "스스로 서면서도 주변과 손잡을 줄 아는 아이",
+    body: "자기 생각을 밀고 나갈 힘과 주변 상황을 살피는 여유가 비교적 잘 어우러집니다. 도전할 기회를 충분히 주되, 도움을 요청하고 의견을 나누는 것도 능력임을 알려 주세요.",
+  },
+  neutral: {
+    title: "상황에 맞춰 유연하게 속도를 조절하는 아이",
+    body: "한쪽으로 치우치기보다 환경에 따라 앞에 나서거나 한발 물러설 줄 아는 편입니다. 다양한 경험을 제공하면 아이가 자기에게 잘 맞는 역할과 관심사를 자연스럽게 찾아갑니다.",
+  },
+  "slightly-weak": {
+    title: "서두르기보다 살펴보고 움직이는 신중한 아이",
+    body: "주변의 분위기와 사람의 마음을 세심하게 읽고 충분히 생각한 뒤 행동하는 편입니다. 작은 선택을 직접 끝내는 경험과 구체적인 칭찬이 쌓이면 조심성이 단단한 자신감으로 바뀝니다.",
+  },
+  "extremely-weak": {
+    title: "섬세한 감각을 지닌 아이, 안전한 울타리가 먼저예요",
+    body: "환경의 변화와 관계의 온도를 민감하게 받아들일 수 있습니다. 익숙한 생활 리듬과 안정적인 애착을 먼저 만들어 주면 섬세함이 관찰력과 공감 능력으로 건강하게 자랍니다.",
+  },
+};
+
+const RELATIONSHIP_COPY: Record<RoleKey, { title: string; body: string }> = {
+  bigeop: {
+    title: "친구와 나란히 걷되, 내 길도 잃지 않아요",
+    body: "또래와 함께할 때 활력이 커지지만 주도권을 두고 경쟁할 수도 있습니다. 이기고 지는 것보다 함께 해낸 결과를 자주 경험하게 하면 건강한 리더십을 배웁니다.",
+  },
+  siksang: {
+    title: "말과 웃음으로 사람 사이의 문을 여는 아이",
+    body: "자기 이야기를 나누며 가까워지는 편이라 밝은 분위기를 만드는 재능이 있습니다. 감정이 앞설 때는 말하기 전에 상대의 표정과 마음을 한 번 더 살피는 습관을 알려 주세요.",
+  },
+  jaeseong: {
+    title: "말보다 행동으로 마음을 보여주는 든든한 친구",
+    body: "가까운 사람을 실제로 돕고 약속을 지키며 신뢰를 쌓는 편입니다. 관계를 혼자 책임지려 하지 않도록 원하는 것과 어려운 점을 솔직히 말하는 연습도 필요합니다.",
+  },
+  gwanseong: {
+    title: "예의와 약속을 지키며 오래 신뢰받는 아이",
+    body: "관계에서도 기준과 책임을 중요하게 여겨 믿음직한 인상을 줍니다. 친구의 다른 방식도 틀린 것이 아니라는 점을 배우면 원칙과 따뜻함을 함께 갖춘 아이로 자랍니다.",
+  },
+  insung: {
+    title: "상대의 마음을 조용히 읽어주는 다정한 친구",
+    body: "사람의 말과 표정을 세심하게 받아들이고 마음을 헤아리는 힘이 좋습니다. 다른 사람의 감정까지 모두 짊어지지 않도록 아이 자신의 마음도 먼저 말할 수 있게 도와주세요.",
+  },
+};
+
+function getRankedRoles(day: LuckyDay) {
+  return (Object.keys(day.strength.roleQi) as RoleKey[])
+    .sort((a, b) => day.strength.roleQi[b].percentage - day.strength.roleQi[a].percentage);
+}
+
+function getShortTitlePhrase(value: string, maxLength = 28) {
+  const phrase = value
+    .split(/[,.·/]|하며|이며|있으며|하거나|하고/)[0]
+    .trim();
+  return phrase.length > maxLength ? `${phrase.slice(0, maxLength).trim()}…` : phrase;
+}
+
+function getMoneySection(day: LuckyDay): Pick<FriendlyReportSection, "title" | "body"> {
+  const practicalSense = day.strength.roleQi.jaeseong.percentage;
+  if (practicalSense >= 25) {
+    return {
+      title: "작은 것도 허투루 쓰지 않는 야무진 현실 감각",
+      body: "시간, 물건, 돈처럼 한정된 것을 계획적으로 쓰고 결과를 확인하는 데 관심이 많을 수 있습니다. 저축만 강조하기보다 가치 있는 경험에 기꺼이 쓰는 법도 함께 알려주면 균형 잡힌 판단력이 자랍니다.",
+    };
+  }
+  if (practicalSense <= 10) {
+    return {
+      title: "경험에 마음이 먼저 가는 아이, 돈 습관은 천천히",
+      body: "당장의 재미와 의미 있는 경험에 먼저 끌릴 수 있어 계획과 정리는 후천적으로 익히는 편이 좋습니다. 용돈을 나누어 쓰고 남기는 간단한 습관부터 시작하면 현실 감각이 자연스럽게 따라옵니다.",
+    };
+  }
+  return {
+    title: "필요와 즐거움 사이에서 균형을 배우는 아이",
+    body: "현실적인 필요를 살피면서도 좋아하는 일에는 기꺼이 시간과 자원을 쓰는 편입니다. 사고 싶은 것과 필요한 것을 구분하는 대화를 자주 나누면 건강한 경제 감각이 자리 잡습니다.",
+  };
+}
+
+/** 전문 계산 결과를 부모가 바로 이해할 수 있는 10개 생활 주제로 바꾼다. */
+export function buildFriendlySajuSections(day: LuckyDay): FriendlyReportSection[] {
+  const profile = getDayPillarProfile(day.dayPillar);
+  const roles = getRankedRoles(day);
+  const primaryRole = roles[0];
+  const secondaryRole = roles[1];
+  const image = profile?.image ?? "자기만의 빛을 품은 모습";
+  const trait = profile?.traits[0] ?? "자신만의 리듬을 지닌";
+  const strengths = profile?.strengths.join("·") ?? ROLE_CHILD_TRAIT[primaryRole];
+  const cautions = profile?.cautions.join("·") ?? "마음과 행동의 속도를 맞추는 연습";
+  const shortTrait = getShortTitlePhrase(trait);
+  const shortCaution = getShortTitlePhrase(cautions);
+  const careers = profile?.careerThemes.slice(0, 4) ?? [];
+  const money = getMoneySection(day);
+  const flow = buildDaewoonInterpretations(day);
+  const broadeningPeriod = [...flow].sort((a, b) => b.deltaScore - a.deltaScore)[0];
+  const earlyFlow = flow.slice(0, 4)
+    .map((item) => `${item.periodLabel}에는 ${item.primaryTheme}`)
+    .join(", ");
+
+  const sections: FriendlyReportSection[] = [
+    {
+      id: "core",
+      icon: "sparkles",
+      title: `${image}, ${shortTrait} 아이`,
+      body: `이 아이는 ${image} 같은 모습을 떠올리게 하는 기질을 지녔습니다. 평소에는 ${trait} 같은 성향이 자연스럽게 드러나며, ${strengths} 같은 장점이 성장의 든든한 바탕이 됩니다. 한 가지 모습으로 단정하기보다 새로운 환경과 익숙한 환경에서 어떻게 달라지는지 함께 지켜봐 주세요.`,
+    },
+    {
+      id: "inner-pace",
+      icon: "heart",
+      title: STRENGTH_FRIENDLY_COPY[day.strength.grade].title,
+      body: STRENGTH_FRIENDLY_COPY[day.strength.grade].body,
+    },
+    {
+      id: "learning",
+      icon: "brain",
+      title: ROLE_FRIENDLY_COPY[primaryRole].title,
+      body: ROLE_FRIENDLY_COPY[primaryRole].body,
+    },
+    {
+      id: "hidden-strength",
+      icon: "message",
+      title: `익숙해질수록 빛나는 또 하나의 힘, ${ROLE_CHILD_TRAIT[secondaryRole]}`,
+      body: `${ROLE_FRIENDLY_COPY[secondaryRole].body} 처음부터 모든 장점이 동시에 보이지는 않습니다. 편안하고 안전하다고 느끼는 환경에서 이 두 번째 강점이 더 자연스럽게 나타날 수 있습니다.`,
+    },
+    {
+      id: "relationships",
+      icon: "users",
+      title: RELATIONSHIP_COPY[primaryRole].title,
+      body: RELATIONSHIP_COPY[primaryRole].body,
+    },
+    {
+      id: "challenge",
+      icon: "shield",
+      title: `잘하고 싶은 마음이 커질 때, ${shortCaution}`,
+      body: `아이의 강점이 지나치게 힘을 쓰면 ${cautions} 같은 모습으로 나타날 수 있습니다. 이는 나쁜 성격이나 정해진 문제가 아니라, 아직 마음과 행동의 속도를 맞추는 중이라는 뜻입니다. 실수한 결과를 바로 고쳐주기보다 아이가 원인을 말하고 다음 방법을 고르게 도와주세요.`,
+    },
+    {
+      id: "career",
+      icon: "compass",
+      title: careers.length ? `${careers.slice(0, 2).join("·")}처럼 재능을 쓰는 무대가 잘 맞아요` : "좋아하는 일을 자기 방식으로 발전시키는 아이",
+      body: `아이의 강점은 ${strengths}입니다. ${careers.join("·") || "기획·표현·탐구"} 같은 분야는 이 힘을 활용할 수 있는 예시입니다. 직업을 미리 정하기보다 어떤 활동을 할 때 오래 집중하고 스스로 다시 시도하는지 관찰하는 것이 더 중요합니다.`,
+    },
+    {
+      id: "money",
+      icon: "wallet",
+      title: money.title,
+      body: money.body,
+    },
+    {
+      id: "parenting",
+      icon: "home",
+      title: `${ELEMENT_GROWTH_TONE[day.yongshin.element]}을 키워주는 집이 좋아요`,
+      body: `${YUKA_BY_STRENGTH[day.strength.grade]} ${YUKA_BY_ELEMENT[day.yongshin.element]} 아이를 바꾸려 하기보다 이미 가진 장점이 편안하게 쓰일 수 있는 환경을 만드는 것이 핵심입니다.`,
+    },
+    {
+      id: "life-flow",
+      icon: "route",
+      title: broadeningPeriod ? `${broadeningPeriod.periodLabel} 무렵, 아이의 가능성이 한층 넓어져요` : "아이의 성장은 시기마다 다른 모습으로 열려요",
+      body: `아이의 성장에는 빠르게 뻗어가는 때와 기초를 단단히 다지는 때가 번갈아 찾아옵니다. ${earlyFlow || "어린 시절에는 생활 리듬과 자신감을 차근차근 쌓는 과정이 중요합니다"}. 흐름이 편안할 때는 경험의 폭을 넓혀주고, 부담이 커지는 때에는 결과를 재촉하기보다 생활 리듬과 마음의 안정을 먼저 챙겨 주세요.`,
+    },
+  ];
+
+  return sections.map((section) => ({
+    ...section,
+    title: sanitizeFriendlySajuText(section.title),
+    body: sanitizeFriendlySajuText(section.body),
+  }));
+}
+
+/** 화면용 해설에는 계산 코드와 전문가 용어를 남기지 않는다. */
+export function sanitizeFriendlySajuText(value: string) {
+  return sanitizeSajuExplanation(value)
+    .replace(/\bSI\s*(?:지수)?/gi, "타고난 기운의 균형")
+    .replace(/조후용신|억부용신|용신|희신/g, "보완에 필요한 힘")
+    .replace(/오행\s*기도|기도/g, "기운의 비중")
+    .replace(/일주론/g, "타고난 기질")
+    .replace(/격국/g, "재능이 쓰이는 방식")
+    .replace(/대운/g, "10년 단위 성장 흐름")
+    .replace(/십성/g, "다섯 가지 성향")
+    .replace(/신강|신약/g, "자기 힘의 강약")
+    .replace(/원국/g, "태어난 사주")
+    .replace(/생조/g, "도와주는 힘")
+    .replace(/극설/g, "밖으로 쓰이는 힘")
+    .replace(/\b(?:TR_DW|BASIC|GYEOK|SIPSEONG|JOB|PARENTING)_[A-Z0-9_]+\b/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
 
 function formatGanzi(ganzi: string) {
   return `${[...ganzi].map((char) => GANJI_READING[char] ?? char).join("")}(${ganzi})`;
