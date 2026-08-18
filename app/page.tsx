@@ -8,12 +8,14 @@ import { Compass, HeartHandshake, Sparkles, Star } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/date-range-picker";
+import { LocationCombobox } from "@/components/location-combobox";
 import { SiteHeader } from "@/components/site-header";
 import {
   DEFAULT_BIRTH_GENDER,
   DEFAULT_BIRTH_LOCATION_ID,
   getBirthLocation,
   type BirthGender,
+  type BirthLocation,
 } from "@/lib/birth-options";
 
 const highlights = [
@@ -26,19 +28,19 @@ export default function HomePage() {
   const router = useRouter();
   const [range, setRange] = React.useState<DateRange | undefined>();
   const [gender, setGender] = React.useState<BirthGender>(DEFAULT_BIRTH_GENDER);
-  const [locationText, setLocationText] = React.useState(
-    getBirthLocation(DEFAULT_BIRTH_LOCATION_ID).label
+  const [location, setLocation] = React.useState<BirthLocation | null>(
+    () => getBirthLocation(DEFAULT_BIRTH_LOCATION_ID)
   );
 
-  const canSubmit = Boolean(range?.from && range?.to && locationText.trim());
+  const canSubmit = Boolean(range?.from && range?.to && location);
 
   const handleSubmit = () => {
-    if (!range?.from || !range?.to) return;
+    if (!range?.from || !range?.to || !location) return;
     const params = new URLSearchParams({
       from: format(range.from, "yyyy-MM-dd"),
       to: format(range.to, "yyyy-MM-dd"),
       gender,
-      location: locationText.trim(),
+      location: location.id,
     });
     router.push(`/results?${params.toString()}`);
   };
@@ -105,14 +107,9 @@ export default function HomePage() {
 
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">출산 지역</p>
-                <input
-                  value={locationText}
-                  onChange={(event) => setLocationText(event.target.value)}
-                  placeholder="예: 서울 강남구, 부산 해운대구, 제주"
-                  className="h-12 w-full rounded-[1rem] border border-input bg-background/90 px-3 text-base shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                />
+                <LocationCombobox value={location} onChange={setLocation} />
                 <p className="text-xs leading-5 text-muted-foreground">
-                  입력한 지역명을 내부 좌표 테이블에 매칭해 동경 135도 기준시와의 경도 차이를 보정합니다.
+                  검색 결과에서 지역을 선택해 주세요. 선택한 지역의 내부 좌표로 동경 135도 기준시와의 경도 차이를 보정합니다.
                 </p>
               </div>
 

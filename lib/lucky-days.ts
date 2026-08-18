@@ -333,6 +333,7 @@ export function calculateLuckyDays({
         hour: slot.hour,
         minute: 0,
         longitude: location.longitude,
+        correctionMinutes: location.correctionMinutes,
       });
       const engineTime = adaptCorrectedTimeForOrrery(adjusted);
       const result = calculateSaju({

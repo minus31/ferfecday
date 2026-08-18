@@ -5,12 +5,18 @@ import {
   buildBabySummary,
   buildFriendlySajuSections,
   buildIntegratedSajuReport,
+  evaluateFriendlySajuSections,
   sanitizeSajuExplanation,
 } from "@/lib/saju/integrated-report";
+import { DAY_PILLARS, getDayPillarProfile } from "@/lib/saju/day-pillar-profiles";
 
 assert.equal(
   sanitizeSajuExplanation("TR_DW_11(육해살 대운) — 내가 水를 쓴다."),
   "육해살 대운 — 아이가 수(水)를 쓴다.",
+);
+assert.equal(
+  sanitizeSajuExplanation("힘이 나는 활동입니다. 나는 배우고 싶습니다."),
+  "힘이 나는 활동입니다. 아이는 배우고 싶습니다.",
 );
 
 const response = calculateLuckyDays({
@@ -34,14 +40,16 @@ for (const day of response.results) {
   friendlyTitleSignatures.add(friendlySections.map((section) => section.title).join("|"));
   assert.equal(friendlySections.length, 10, "화면용 해설은 10개 주제여야 합니다.");
   assert.equal(new Set(friendlySections.map((section) => section.id)).size, 10, "해설 주제 ID가 중복됩니다.");
+  const friendlyEvaluation = evaluateFriendlySajuSections(friendlySections, day);
+  assert.equal(friendlyEvaluation.accepted, true, friendlyEvaluation.issues.join("\n"));
   const friendlyText = friendlySections.map((section) => `${section.title}\n${section.body}`).join("\n");
   assert.doesNotMatch(
     friendlyText,
     /\bSI\b|기도|용신|희신|일주론|격국|대운|십성|신강|신약|원국|생조|극설|TR_DW|GYEOK|SIPSEONG/i,
     "일반인용 해설에 전문·내부 용어가 남아 있습니다.",
   );
-  assert.ok(friendlySections.every((section) => section.title.length >= 10 && section.body.length >= 80));
-  assert.ok(friendlySections.every((section) => section.title.length <= 70), "모바일에서 읽기에는 해설 제목이 너무 깁니다.");
+  assert.ok(friendlySections.every((section) => section.title.length >= 10 && section.body.length >= 180));
+  assert.ok(friendlySections.every((section) => section.title.length <= 55), "모바일에서 읽기에는 해설 제목이 너무 깁니다.");
 
   const report = buildIntegratedSajuReport(day);
   const userText = Object.values(report.content).join("\n");
@@ -87,5 +95,63 @@ for (const day of response.results) {
 }
 
 assert.ok(friendlyTitleSignatures.size > 1, "사주가 달라도 사용자용 해설 제목이 모두 같습니다.");
+
+const templateDay = response.results[0];
+for (const dayPillar of DAY_PILLARS) {
+  const profile = getDayPillarProfile(dayPillar);
+  assert.ok(profile, `${dayPillar} 프로필이 없습니다.`);
+  const simulatedDay = {
+    ...templateDay,
+    dayPillar,
+    dayPillarHangul: profile.name.replace("일주", ""),
+  };
+  const sections = buildFriendlySajuSections(simulatedDay);
+  const evaluation = evaluateFriendlySajuSections(sections, simulatedDay);
+  assert.equal(evaluation.accepted, true, `${dayPillar}: ${evaluation.issues.join("\n")}`);
+  assert.ok(
+    sections.every((section) => !section.title.includes(profile.image)),
+    `${dayPillar} 물상 표현이 제목에 그대로 노출됩니다: ${profile.image}`,
+  );
+}
+
+const strengthGrades = [
+  "extremely-strong",
+  "slightly-strong",
+  "neutral",
+  "slightly-weak",
+  "extremely-weak",
+] as const;
+const primaryRoles = ["bigeop", "siksang", "jaeseong", "gwanseong", "insung"] as const;
+for (const grade of strengthGrades) {
+  for (const primaryRole of primaryRoles) {
+    const roleQi = {
+      ...templateDay.strength.roleQi,
+      bigeop: { ...templateDay.strength.roleQi.bigeop, percentage: primaryRole === "bigeop" ? 60 : 10 },
+      siksang: { ...templateDay.strength.roleQi.siksang, percentage: primaryRole === "siksang" ? 60 : 10 },
+      jaeseong: { ...templateDay.strength.roleQi.jaeseong, percentage: primaryRole === "jaeseong" ? 60 : 10 },
+      gwanseong: { ...templateDay.strength.roleQi.gwanseong, percentage: primaryRole === "gwanseong" ? 60 : 10 },
+      insung: { ...templateDay.strength.roleQi.insung, percentage: primaryRole === "insung" ? 60 : 10 },
+    };
+    const simulatedDay = {
+      ...templateDay,
+      strength: { ...templateDay.strength, grade, roleQi },
+    };
+    const sections = buildFriendlySajuSections(simulatedDay);
+    const evaluation = evaluateFriendlySajuSections(sections, simulatedDay);
+    assert.equal(evaluation.accepted, true, `${grade}/${primaryRole}: ${evaluation.issues.join("\n")}`);
+  }
+}
+
+const rejectedShortMetaphor = evaluateFriendlySajuSections([
+  {
+    id: "core",
+    icon: "sparkles",
+    title: "건조한 땅을 잇는 구불구불한 길",
+    body: "근면한 아이입니다.",
+  },
+], templateDay);
+assert.equal(rejectedShortMetaphor.accepted, false, "추상적인 물상 제목과 짧은 본문을 거부해야 합니다.");
+assert.ok(rejectedShortMetaphor.issues.some((issue) => issue.includes("자연물 비유")));
+assert.ok(rejectedShortMetaphor.issues.some((issue) => issue.includes("180~700자")));
 
 console.log("detail-report verification: ok");

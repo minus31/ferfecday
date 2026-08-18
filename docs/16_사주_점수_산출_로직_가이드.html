@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>현재 사주 점수 산출 로직 가이드</title>
+  <style>
+    :root {
+      --ink: #24201f;
+      --muted: #726a67;
+      --paper: #fffdf9;
+      --ground: #f5f0e8;
+      --line: #e8ded1;
+      --brand: #71345f;
+      --brand-soft: #f3e9f0;
+      --green: #21765c;
+      --green-soft: #e9f5f0;
+      --amber: #a76211;
+      --amber-soft: #fff3d8;
+      --red: #a94747;
+      --red-soft: #fbeaea;
+      --blue: #426a8c;
+      --blue-soft: #eaf1f7;
+      --shadow: 0 18px 60px rgb(64 46 35 / 8%);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 3%, rgb(113 52 95 / 9%), transparent 27rem),
+        radial-gradient(circle at 94% 18%, rgb(217 168 74 / 10%), transparent 30rem),
+        var(--ground);
+      font-family: Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+      word-break: keep-all;
+    }
+
+    a { color: inherit; }
+    button, input, select { font: inherit; }
+    code, .formula, .number {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .page { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 80px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(34px, 6vw, 72px);
+      color: #fff;
+      border-radius: 28px;
+      background: linear-gradient(135deg, #3d2637 0%, #71345f 62%, #9d6751 100%);
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      right: -120px;
+      top: -145px;
+      border: 1px solid rgb(255 255 255 / 22%);
+      border-radius: 50%;
+      box-shadow: 0 0 0 52px rgb(255 255 255 / 5%), 0 0 0 108px rgb(255 255 255 / 4%);
+    }
+    .eyebrow { margin: 0 0 12px; color: #f4d8e9; font-size: 13px; font-weight: 800; letter-spacing: .14em; }
+    h1 { max-width: 760px; margin: 0; font-size: clamp(34px, 6vw, 64px); line-height: 1.12; letter-spacing: -.045em; }
+    .hero-copy { max-width: 720px; margin: 22px 0 0; color: rgb(255 255 255 / 80%); font-size: clamp(16px, 2.2vw, 20px); }
+    .meta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 26px; }
+    .meta span { padding: 6px 11px; border: 1px solid rgb(255 255 255 / 20%); border-radius: 999px; background: rgb(255 255 255 / 9%); font-size: 12px; }
+
+    .quick-nav {
+      position: sticky;
+      z-index: 10;
+      top: 10px;
+      display: flex;
+      gap: 8px;
+      margin: 18px 0 0;
+      padding: 9px;
+      overflow-x: auto;
+      border: 1px solid rgb(232 222 209 / 82%);
+      border-radius: 17px;
+      background: rgb(255 253 249 / 88%);
+      box-shadow: 0 8px 30px rgb(64 46 35 / 7%);
+      backdrop-filter: blur(12px);
+      scrollbar-width: none;
+    }
+    .quick-nav::-webkit-scrollbar { display: none; }
+    .quick-nav a { flex: 0 0 auto; padding: 8px 12px; color: var(--muted); border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 700; }
+    .quick-nav a:hover, .quick-nav a:focus-visible { color: var(--brand); background: var(--brand-soft); outline: none; }
+
+    section { scroll-margin-top: 90px; margin-top: 22px; }
+    .surface { padding: clamp(22px, 4vw, 42px); border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: var(--shadow); }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .kicker { margin: 0 0 5px; color: var(--brand); font-size: 12px; font-weight: 900; letter-spacing: .12em; }
+    h2 { margin: 0; font-size: clamp(25px, 4vw, 38px); line-height: 1.22; letter-spacing: -.035em; }
+    h3 { margin: 0 0 8px; font-size: 18px; line-height: 1.45; letter-spacing: -.015em; }
+    p { margin: 0; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .summary-card { min-height: 150px; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+    .summary-card .big { display: block; margin: 8px 0 3px; color: var(--brand); font-size: clamp(29px, 4vw, 45px); font-weight: 850; line-height: 1; letter-spacing: -.04em; }
+    .summary-card p { color: var(--muted); font-size: 14px; }
+    .verdict { grid-column: 1 / -1; display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: 16px; background: var(--green-soft); color: #194e3e; }
+    .verdict strong { flex: 0 0 auto; }
+
+    .formula-box { margin-top: 22px; padding: 22px; border: 1px solid #d9c5d3; border-radius: 17px; background: linear-gradient(135deg, #fff, var(--brand-soft)); }
+    .formula { display: block; overflow-x: auto; color: #542447; font-size: clamp(14px, 2vw, 18px); font-weight: 800; white-space: nowrap; }
+    .formula + .formula { margin-top: 9px; }
+
+    .flow { display: grid; grid-template-columns: repeat(7, 1fr); align-items: stretch; gap: 10px; }
+    .flow-step { position: relative; min-width: 0; padding: 17px 14px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+    .flow-step:not(:last-child)::after { content: "›"; position: absolute; z-index: 2; right: -9px; top: 50%; width: 18px; color: var(--brand); background: var(--paper); font-size: 24px; font-weight: 900; line-height: 20px; text-align: center; transform: translateY(-50%); }
+    .flow-num { display: block; width: 25px; height: 25px; margin-bottom: 10px; color: #fff; border-radius: 50%; background: var(--brand); font-size: 12px; font-weight: 900; line-height: 25px; text-align: center; }
+    .flow-step strong { display: block; font-size: 14px; }
+    .flow-step span:last-child { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .two-col { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .plain-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+    .tag { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; color: var(--brand); background: var(--brand-soft); font-size: 11px; font-weight: 850; }
+    .clean-list { margin: 14px 0 0; padding-left: 19px; }
+    .clean-list li { margin-top: 8px; color: #443e3b; }
+    .clean-list li::marker { color: var(--brand); }
+    .note { margin-top: 14px; padding: 13px 15px; border-left: 3px solid var(--amber); border-radius: 0 10px 10px 0; color: #654315; background: var(--amber-soft); font-size: 13px; }
+
+    .role-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+    .role { padding: 13px 8px; border-radius: 13px; text-align: center; background: #f7f3ed; }
+    .role b { display: block; font-size: 14px; }
+    .role span { color: var(--muted); font-size: 11px; }
+    .equation { margin-top: 16px; padding: 18px; overflow-x: auto; border-radius: 14px; color: #29475e; background: var(--blue-soft); font-weight: 800; white-space: nowrap; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #554e4a; background: #f7f3ed; font-size: 12px; white-space: nowrap; }
+    tr:last-child td { border-bottom: 0; }
+    td.number, th.number { text-align: right; }
+    .positive { color: var(--green); font-weight: 800; }
+    .negative { color: var(--red); font-weight: 800; }
+
+    details.rule-group { border-top: 1px solid var(--line); }
+    details.rule-group:first-of-type { border-top: 0; }
+    details.rule-group summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 2px; cursor: pointer; font-weight: 800; list-style: none; }
+    details.rule-group summary::-webkit-details-marker { display: none; }
+    details.rule-group summary::after { content: "+"; color: var(--brand); font-size: 21px; }
+    details.rule-group[open] summary::after { content: "−"; }
+    details.rule-group .table-wrap { margin: 0 0 20px; }
+
+    .sim-layout { display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr); gap: 18px; }
+    .control-card, .result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+    label { display: block; margin-bottom: 6px; color: #554e4a; font-size: 12px; font-weight: 800; }
+    select, input[type="number"] { width: 100%; min-height: 43px; padding: 8px 10px; color: var(--ink); border: 1px solid #d9cfc3; border-radius: 10px; background: #fff; }
+    input[type="range"] { width: 100%; accent-color: var(--brand); }
+    .field { margin-top: 15px; }
+    .field:first-child { margin-top: 0; }
+    .slider-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
+    .base-readout { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; margin-top: 13px; }
+    .base-readout strong { color: var(--brand); font-size: 35px; line-height: 1; }
+    .base-readout span { color: var(--muted); font-size: 12px; }
+    .input-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .adjust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .score-hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .score-orb { display: grid; width: 118px; height: 118px; place-items: center; color: #fff; border-radius: 50%; background: linear-gradient(145deg, #8e4e79, #542447); box-shadow: 0 14px 30px rgb(113 52 95 / 25%); }
+    .score-orb strong { font-size: 38px; line-height: 1; }
+    .score-orb span { display: block; font-size: 10px; text-align: center; opacity: .8; }
+    .score-parts { margin-top: 16px; }
+    .score-part { display: grid; grid-template-columns: 125px 1fr 55px; align-items: center; gap: 10px; margin-top: 11px; font-size: 12px; }
+    .track { height: 9px; overflow: hidden; border-radius: 99px; background: #eee7df; }
+    .track i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--brand); transition: width .25s ease; }
+    .raw-note { margin-top: 17px; padding: 13px 15px; border-radius: 12px; color: #5f3c0c; background: var(--amber-soft); font-size: 13px; }
+    .daw-bars { display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; gap: 7px; height: 160px; margin-top: 18px; padding-top: 8px; border-bottom: 1px solid var(--line); }
+    .daw-bar { position: relative; height: var(--height); min-height: 6px; border-radius: 7px 7px 0 0; background: linear-gradient(#9c6289, #71345f); }
+    .daw-bar b { position: absolute; left: 50%; top: -22px; color: #504945; font-size: 10px; transform: translateX(-50%); }
+    .daw-bar span { position: absolute; left: 50%; bottom: -26px; color: var(--muted); font-size: 10px; transform: translateX(-50%); white-space: nowrap; }
+
+    .sample-table td:first-child { font-weight: 800; white-space: nowrap; }
+    .pill { display: inline-flex; padding: 2px 7px; border-radius: 999px; background: #f1ece6; font-size: 11px; white-space: nowrap; }
+    .calc-example { margin-top: 18px; padding: 22px; border-radius: 18px; background: #30262d; color: #fff; }
+    .calc-example .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+    .calc-example .steps div { padding: 13px; border: 1px solid rgb(255 255 255 / 13%); border-radius: 12px; background: rgb(255 255 255 / 6%); }
+    .calc-example small { display: block; color: rgb(255 255 255 / 57%); }
+    .calc-example strong { display: block; margin-top: 5px; font-size: 18px; }
+
+    .limits { background: #2d2725; color: #fff; }
+    .limits .kicker { color: #f1bbaf; }
+    .limit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
+    .limit { padding: 19px; border: 1px solid rgb(255 255 255 / 11%); border-radius: 16px; background: rgb(255 255 255 / 5%); }
+    .limit strong { display: block; color: #ffd4c9; }
+    .limit p { margin-top: 6px; color: rgb(255 255 255 / 70%); font-size: 13px; }
+    .priority { margin-top: 18px; padding: 17px 19px; color: #fee9a7; border: 1px solid rgb(254 233 167 / 25%); border-radius: 15px; background: rgb(254 233 167 / 7%); }
+
+    .source-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin-top: 18px; }
+    .source-list code { display: block; padding: 12px 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; color: #544b47; background: #f8f5f0; font-size: 12px; white-space: nowrap; }
+    footer { padding-top: 26px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    @media (max-width: 930px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .flow { grid-template-columns: repeat(2, 1fr); }
+      .flow-step:not(:last-child)::after { display: none; }
+      .sim-layout { grid-template-columns: 1fr; }
+      .calc-example .steps { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .page { width: min(100% - 20px, 1180px); padding-top: 10px; }
+      .hero, .surface { border-radius: 20px; }
+      .hero { padding: 30px 23px; }
+      .quick-nav { top: 6px; }
+      .summary-grid, .two-col, .limit-grid, .source-list { grid-template-columns: 1fr; }
+      .role-row { grid-template-columns: repeat(2, 1fr); }
+      .input-grid { grid-template-columns: repeat(2, 1fr); }
+      .adjust-grid { grid-template-columns: 1fr; }
+      .score-hero { grid-template-columns: 1fr; }
+      .score-orb { width: 104px; height: 104px; }
+      .score-part { grid-template-columns: 104px 1fr 48px; }
+      .calc-example .steps { grid-template-columns: 1fr; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      th, td { padding: 10px 11px; }
+    }
+    @media print {
+      body { background: #fff; }
+      .page { width: 100%; padding: 0; }
+      .quick-nav, .sim-layout .control-card { display: none; }
+      .hero, .surface { box-shadow: none; break-inside: avoid; }
+      section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">IMPLEMENTATION GUIDE · CURRENT CODE</p>
+      <h1>사주 점수는<br />어떻게 계산되는가</h1>
+      <p class="hero-copy">현재 서비스 코드가 후보 날짜와 시간을 만들고, 오행의 균형을 수치화한 뒤, 여덟 대운과 명리 규칙의 가감점을 합쳐 최종 순위를 정하는 과정을 한 장에 정리했습니다.</p>
+      <div class="meta">
+        <span>코드 확인일 2026-08-11</span>
+        <span>기준 커밋 c3405c0</span>
+        <span>단일 HTML · 외부 라이브러리 없음</span>
+      </div>
+    </header>
+
+    <nav class="quick-nav" aria-label="문서 바로가기">
+      <a href="#summary">한눈에 보기</a>
+      <a href="#flow">계산 흐름</a>
+      <a href="#balance">균형 점수</a>
+      <a href="#adjustments">가감점</a>
+      <a href="#simulator">시뮬레이터</a>
+      <a href="#example">실제 예시</a>
+      <a href="#limits">문제점·한계</a>
+    </nav>
+
+    <section id="summary" class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">QUICK SUMMARY</p>
+          <h2>먼저 결론부터</h2>
+        </div>
+        <p class="muted small">최종 화면 점수의 범위는 0~100점입니다.</p>
+      </div>
+      <div class="summary-grid">
+        <article class="summary-card">
+          <span class="tag">후보 생성</span>
+          <span class="big">12개</span>
+          <p>하루를 2시간 간격으로 나눈 출생 시간 후보입니다.</p>
+        </article>
+        <article class="summary-card">
+          <span class="tag">검색 범위</span>
+          <span class="big">최대 3일</span>
+          <p>따라서 한 번에 최대 36개 후보를 계산합니다.</p>
+        </article>
+        <article class="summary-card">
+          <span class="tag">중심 점수</span>
+          <span class="big">8대운 평균</span>
+          <p>원국에 각 대운을 하나씩 더해 얻은 8개 균형 점수의 평균입니다.</p>
+        </article>
+        <article class="summary-card">
+          <span class="tag">최종 보정</span>
+          <span class="big">3묶음</span>
+          <p>십성, 12운성·12신살, 길성·흉살·공망 가감점입니다.</p>
+        </article>
+        <div class="verdict">
+          <strong>핵심 해석</strong>
+          <span>현재 점수는 “좋은 삶의 확률”이 아니라, 코드에 입력된 명리 규칙상 <b>균형이 목표값에 얼마나 가깝고 가점 조건을 얼마나 충족하는지</b>를 비교하기 위한 추천용 지표입니다.</span>
+        </div>
+      </div>
+      <div class="formula-box" aria-label="최종 점수 공식">
+        <span class="formula">최종 점수 = 0~100 사이로 제한(8개 대운 균형 점수 평균 + 십성 가감 + 운성·신살 가감 + 길흉·공망 가감)</span>
+        <span class="formula">균형 점수 = 0~100 사이로 제한(100 − |17.5 − 강약값| × 구간별 계수)</span>
+      </div>
+    </section>
+
+    <section id="flow" class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">CALCULATION FLOW</p>
+          <h2>후보 하나가 점수가 되기까지</h2>
+        </div>
+      </div>
+      <div class="flow" aria-label="사주 점수 계산 순서">
+        <div class="flow-step"><span class="flow-num">1</span><strong>날짜·시간 후보</strong><span>날짜별 12개 시간대</span></div>
+        <div class="flow-step"><span class="flow-num">2</span><strong>지역 시간 보정</strong><span>경도 기준 태양시 보정</span></div>
+        <div class="flow-step"><span class="flow-num">3</span><strong>사주 원국 계산</strong><span>네 기둥과 대운 산출</span></div>
+        <div class="flow-step"><span class="flow-num">4</span><strong>오행 기도 계산</strong><span>목·화·토·금·수 비율</span></div>
+        <div class="flow-step"><span class="flow-num">5</span><strong>강약·균형 점수</strong><span>돕는 힘과 소모하는 힘</span></div>
+        <div class="flow-step"><span class="flow-num">6</span><strong>8개 대운 평균</strong><span>장기 흐름을 같은 비중으로</span></div>
+        <div class="flow-step"><span class="flow-num">7</span><strong>가감·정렬</strong><span>0~100 제한 후 상위 3개</span></div>
+      </div>
+
+      <div class="two-col" style="margin-top:18px">
+        <article class="plain-card">
+          <span class="tag">입력 시간</span>
+          <h3 style="margin-top:10px">표시 시간과 계산 시간이 다를 수 있습니다</h3>
+          <p class="muted">사용자에게는 <b>04:00~06:00 인시</b>처럼 선택 범위를 보여주지만, 내부 계산은 출생지 경도에 따라 시간을 보정합니다.</p>
+          <div class="equation">보정 분 = 반올림((지역 경도 − 135°) × 4)</div>
+          <p class="note">서울 126.978°는 −32분, 부산 129.0756°는 −24분입니다. @orrery/core 0.4.2의 시진 경계 차이를 맞추기 위한 +30분은 엔진 입력에만 적용합니다.</p>
+        </article>
+        <article class="plain-card">
+          <span class="tag">후보 정렬</span>
+          <h3 style="margin-top:10px">점수가 같아도 내부 합계로 한 번 더 비교합니다</h3>
+          <ol class="clean-list">
+            <li>화면 점수 높은 순</li>
+            <li>100점 제한 전 내부 합계 높은 순</li>
+            <li>날짜가 빠른 순</li>
+            <li>시간이 빠른 순</li>
+          </ol>
+          <p class="note">이 순서는 문서가 아니라 실제 <code>lib/lucky-days.ts</code> 정렬 코드를 기준으로 확인했습니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="balance" class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">BALANCE SCORE</p>
+          <h2>점수의 중심: 오행 → 강약 → 대운</h2>
+        </div>
+      </div>
+      <div class="two-col">
+        <article class="plain-card">
+          <span class="tag">1. 오행 기도</span>
+          <h3 style="margin-top:10px">글자 수를 단순히 세지 않습니다</h3>
+          <p class="muted">일간 천간은 제외하고, 나머지 천간은 기본값 0.7에서 시작합니다. 지지는 안에 든 지장간 비율로 나눠 계산합니다.</p>
+          <ul class="clean-list">
+            <li>천간: 월지·일지·연지·시지에 뿌리가 있는지 반영</li>
+            <li>천간: 앉은 자리의 생극 관계와 인접한 합·충 반영</li>
+            <li>지지: 월지 +15%, 일지 +8%, 인접 충 −5%</li>
+            <li>지지: 삼합·반합의 중심과 생지·고지 변화를 반영</li>
+            <li>마지막에 목·화·토·금·수 합계를 100% 비율로 변환</li>
+          </ul>
+          <p class="note">가중치가 여러 개이면 더해서 적용합니다. 예: 천간 값 = 0.7 × (1 + 모든 가중치의 합).</p>
+        </article>
+        <article class="plain-card">
+          <span class="tag">2. 역할 변환</span>
+          <h3 style="margin-top:10px">오행을 ‘아이를 돕는 힘’과 ‘쓰이는 힘’으로 바꿉니다</h3>
+          <p class="muted">같은 오행도 일간이 무엇인지에 따라 역할이 달라집니다.</p>
+          <div class="role-row">
+            <div class="role"><b>비겁</b><span>나와 같은 오행</span></div>
+            <div class="role"><b>인성</b><span>나를 생하는 오행</span></div>
+            <div class="role"><b>식상</b><span>내가 생하는 오행</span></div>
+            <div class="role"><b>재성</b><span>내가 극하는 오행</span></div>
+            <div class="role"><b>관성</b><span>나를 극하는 오행</span></div>
+          </div>
+          <div class="equation">돕는 힘 = 인성 + 비겁 × 1.1</div>
+          <div class="equation" style="margin-top:8px">소모·통제 힘 = 식상 + 재성 + 관성 × 1.1</div>
+        </article>
+      </div>
+
+      <div class="two-col" style="margin-top:16px">
+        <article class="plain-card">
+          <span class="tag">3. 강약값과 균형 점수</span>
+          <h3 style="margin-top:10px">목표 강약값은 17.5입니다</h3>
+          <div class="equation">강약값 = (돕는 힘 − 소모·통제 힘) ÷ (두 힘의 합) × 100</div>
+          <p class="muted" style="margin-top:13px">강약값이 17.5에서 멀어질수록 감점합니다. 다만 구간마다 감점 계수 K가 다릅니다.</p>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <thead><tr><th>구간</th><th>조건</th><th class="number">K</th></tr></thead>
+              <tbody>
+                <tr><td>극신강</td><td>30 초과</td><td class="number">1.50</td></tr>
+                <tr><td>약신강</td><td>5 초과~30 이하</td><td class="number">0.18</td></tr>
+                <tr><td>중화</td><td>−5 이상~5 이하</td><td class="number">0.40</td></tr>
+                <tr><td>약신약</td><td>−30 이상~−5 미만</td><td class="number">0.44</td></tr>
+                <tr><td>극신약</td><td>−30 미만</td><td class="number">0.90</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <article class="plain-card">
+          <span class="tag">4. 여덟 대운</span>
+          <h3 style="margin-top:10px">현재 최종 중심 점수는 원국 점수가 아닙니다</h3>
+          <p class="muted">첫 1~8대운의 글자를 원국 오행에 각각 한 번씩 더해 강약값과 균형 점수를 다시 계산합니다. 이 8개 점수의 단순 평균을 최종 중심 점수로 사용합니다.</p>
+          <ul class="clean-list">
+            <li>대운 천간: 기본값 0.7만 추가</li>
+            <li>대운 지지: 지장간 비율만 추가</li>
+            <li>대운 자체의 위치·합·충 가중치는 미적용</li>
+            <li>1대운과 8대운을 같은 비중으로 평균</li>
+          </ul>
+          <p class="note">원국 균형 점수는 상세 근거에만 표시되고, 후보 순위의 중심 점수로 직접 쓰이지 않습니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="adjustments" class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">ADJUSTMENTS</p>
+          <h2>평균 점수에 더하고 빼는 규칙</h2>
+        </div>
+        <p class="muted small">같은 후보에서 여러 조건이 동시에 성립하면 모두 합산합니다.</p>
+      </div>
+
+      <details class="rule-group" open>
+        <summary><span>십성·오행 구성</span><span class="tag">−3.0 ~ +2.0씩</span></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>조건</th><th class="number">점수</th></tr></thead>
+            <tbody>
+              <tr><td>천간·지지에 오행 다섯 종류가 모두 존재</td><td class="number positive">+2.0</td></tr>
+              <tr><td>식상·재성·관성이 모두 존재</td><td class="number positive">+2.0</td></tr>
+              <tr><td>편관과 식신이 함께 존재</td><td class="number positive">+2.0</td></tr>
+              <tr><td>상관과 관성이 함께 존재</td><td class="number negative">−1.0</td></tr>
+              <tr><td>편인·식신이 있고 재성이 없음</td><td class="number negative">−3.0</td></tr>
+              <tr><td>비겁 비율 40% 이상이고 관성이 없음</td><td class="number negative">−2.0</td></tr>
+              <tr><td>여아이고 관성이 없음</td><td class="number negative">−2.0</td></tr>
+              <tr><td>남아이고 재성이 없음</td><td class="number negative">−2.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="rule-group">
+        <summary><span>12운성·12신살 배치</span><span class="tag">−0.5 ~ +0.5</span></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>조건</th><th class="number">점수</th></tr></thead>
+            <tbody>
+              <tr><td>시지 12운성이 장생·건록·관대·쇠 등 지정 길성</td><td class="number positive">+0.5</td></tr>
+              <tr><td>일지 12운성이 장생·건록·쇠 등 지정 길성</td><td class="number positive">+0.5</td></tr>
+              <tr><td>일지 또는 시지에 반안살</td><td class="number positive">+0.5</td></tr>
+              <tr><td>시지 12운성이 절·병·사</td><td class="number negative">−0.5</td></tr>
+              <tr><td>일지 12운성이 목욕·절</td><td class="number negative">−0.2</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="rule-group">
+        <summary><span>길성·흉살·공망</span><span class="tag">개당 또는 조건별 합산</span></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>조건</th><th class="number">점수</th></tr></thead>
+            <tbody>
+              <tr><td>천을귀인 일지·시지 / 연지·월지</td><td class="number positive">개당 +1.5 / +1.0</td></tr>
+              <tr><td>지정 재고귀인 일주 / 다른 지지의 진·술·축·미</td><td class="number positive">+1.0 / 개당 +0.5</td></tr>
+              <tr><td>천덕·월덕 / 문창 / 금여록</td><td class="number positive">+0.2 / +0.1 / +0.2</td></tr>
+              <tr><td>인사신 또는 축술미 삼형살</td><td class="number negative">−1.5</td></tr>
+              <tr><td>일지·월지를 포함한 인접 술해 또는 진사</td><td class="number negative">−1.0</td></tr>
+              <tr><td>일지와 월지·시지 사이 원진 또는 귀문</td><td class="number negative">−1.5</td></tr>
+              <tr><td>정관·정인·정재·편재 지지가 공망 / 그 외 공망</td><td class="number negative">개당 −0.5 / −0.2</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <p class="note">용신은 현재 계산하고 리포트에 보여주지만, <b>최종 점수에는 연결되어 있지 않습니다.</b> <code>calculateBaseScoring()</code>에 전달되는 용신 인자 이름도 <code>_yongshin</code>이며 함수 안에서 사용하지 않습니다.</p>
+    </section>
+
+    <section id="simulator" class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">INTERACTIVE SIMULATOR</p>
+          <h2>현재 공식을 직접 움직여 보기</h2>
+        </div>
+        <p class="muted small">브라우저 안에서만 계산하며 데이터를 전송하지 않습니다.</p>
+      </div>
+      <div class="sim-layout">
+        <div class="control-card">
+          <div class="field">
+            <label for="sample">실제 계산 예시 불러오기</label>
+            <select id="sample">
+              <option value="female1">여아·서울 1위 — 8/22 04:00~06:00</option>
+              <option value="female2">여아·서울 2위 — 8/22 02:00~04:00</option>
+              <option value="female3">여아·서울 3위 — 8/20 08:00~10:00</option>
+              <option value="male1">남아·서울 1위 — 8/22 04:00~06:00</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="si">원국 강약값: <span id="siValue" class="number"></span></label>
+            <input id="si" type="range" min="-60" max="60" step="0.01" />
+            <div class="slider-labels"><span>−60 약함</span><span>17.5 목표</span><span>60 강함</span></div>
+            <div class="base-readout">
+              <div><span>구간</span><strong id="grade">-</strong></div>
+              <div style="text-align:right"><span>원국 균형 점수</span><strong id="originalBase" class="number">-</strong></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>1~8대운 균형 점수</label>
+            <div id="dawInputs" class="input-grid"></div>
+          </div>
+          <div class="field">
+            <label>가감점 묶음</label>
+            <div class="adjust-grid">
+              <div><label for="adj10">십성·오행</label><input id="adj10" type="number" step="0.1" /></div>
+              <div><label for="adj11">운성·신살</label><input id="adj11" type="number" step="0.1" /></div>
+              <div><label for="adj12">길흉·공망</label><input id="adj12" type="number" step="0.1" /></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-card" aria-live="polite">
+          <div class="score-hero">
+            <div>
+              <span class="tag" id="samplePillar">무진(戊辰) 일주</span>
+              <h3 id="sampleTitle" style="margin-top:11px">여아·서울 1위</h3>
+              <p id="sampleMeta" class="muted small"></p>
+            </div>
+            <div class="score-orb"><div><strong id="finalScore" class="number">-</strong><span>최종 화면 점수</span></div></div>
+          </div>
+          <div class="score-parts">
+            <div class="score-part"><span>8대운 평균</span><div class="track"><i id="avgBar"></i></div><b id="avgScore" class="number"></b></div>
+            <div class="score-part"><span>십성·오행 가감</span><div class="track"><i id="adj10Bar"></i></div><b id="adj10Out" class="number"></b></div>
+            <div class="score-part"><span>운성·신살 가감</span><div class="track"><i id="adj11Bar"></i></div><b id="adj11Out" class="number"></b></div>
+            <div class="score-part"><span>길흉·공망 가감</span><div class="track"><i id="adj12Bar"></i></div><b id="adj12Out" class="number"></b></div>
+          </div>
+          <div id="dawBars" class="daw-bars" aria-label="1~8대운 균형 점수 막대그래프"></div>
+          <p id="rawNote" class="raw-note"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="example" class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">REAL EXECUTION</p>
+          <h2>현재 코드로 다시 계산한 결과</h2>
+        </div>
+        <p class="muted small">조건: 2026-08-20~22 · 여아 · 서울 · 36개 후보</p>
+      </div>
+      <div class="table-wrap sample-table">
+        <table>
+          <thead>
+            <tr><th>순위</th><th>후보</th><th>일주</th><th class="number">원국 강약값</th><th class="number">원국 균형</th><th class="number">8대운 평균</th><th class="number">가감 합계</th><th class="number">내부 합계</th><th class="number">화면 점수</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1위</td><td>8/22 04:00~06:00</td><td><span class="pill">무진(戊辰)</span></td><td class="number">17.78</td><td class="number">99.95</td><td class="number">97.74</td><td class="number positive">+4.60</td><td class="number">102.34</td><td class="number"><b>100</b></td></tr>
+            <tr><td>2위</td><td>8/22 02:00~04:00</td><td><span class="pill">무진(戊辰)</span></td><td class="number">22.60</td><td class="number">99.08</td><td class="number">98.23</td><td class="number positive">+3.80</td><td class="number">102.03</td><td class="number"><b>100</b></td></tr>
+            <tr><td>3위</td><td>8/20 08:00~10:00</td><td><span class="pill">병인(丙寅)</span></td><td class="number">7.09</td><td class="number">98.13</td><td class="number">93.14</td><td class="number positive">+6.80</td><td class="number">99.94</td><td class="number"><b>99.94</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="calc-example">
+        <p class="kicker" style="color:#efbedf">1위 후보 계산 예</p>
+        <h3>대운 평균 97.74점에 가감점 4.60점을 더합니다</h3>
+        <div class="steps">
+          <div><small>① 여덟 대운 평균</small><strong class="number">97.74</strong></div>
+          <div><small>② 십성·오행</small><strong class="number">+4.00</strong></div>
+          <div><small>③ 운성·신살 + 길흉</small><strong class="number">+0.50 + 0.10</strong></div>
+          <div><small>④ 내부 합계 → 제한</small><strong class="number">102.34 → 100</strong></div>
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px">
+        <article class="plain-card">
+          <h3>성별을 바꾸면 왜 달라지나?</h3>
+          <p class="muted">같은 8/22 04:00~06:00 후보도 남아로 계산하면 대운의 진행 방향이 달라져 8대운 평균이 <b>97.74 → 96.39</b>로 바뀝니다. 내부 합계는 102.34 → 100.99가 되지만 화면에서는 둘 다 100점입니다.</p>
+        </article>
+        <article class="plain-card">
+          <h3>지역을 바꾸면 항상 달라지나?</h3>
+          <p class="muted">이 예시에서 서울을 부산으로 바꾸면 보정 시간이 03:28 → 03:36으로 달라지지만 같은 시진 안에 있어 결과는 같습니다. 경계 근처 후보라면 시주나 날짜가 달라질 수 있습니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="limits" class="surface limits">
+      <div class="section-head">
+        <div>
+          <p class="kicker">KNOWN LIMITATIONS</p>
+          <h2>현재 문제점과 한계</h2>
+        </div>
+      </div>
+      <div class="limit-grid">
+        <article class="limit"><strong>1. 100점 포화로 상위 후보가 비슷해 보입니다</strong><p>내부 합계가 102.34와 102.03으로 달라도 화면은 모두 100점입니다. 정렬은 제한 전 합계로 구분하지만 사용자는 차이를 보기 어렵습니다.</p></article>
+        <article class="limit"><strong>2. 구간 경계에서 점수가 갑자기 뜁니다</strong><p>강약값 30은 K=0.18, 30을 조금 넘으면 K=1.5가 적용됩니다. −30 경계도 K가 0.44에서 0.9로 바뀌어 아주 작은 입력 변화가 큰 점수 차이를 만들 수 있습니다.</p></article>
+        <article class="limit"><strong>3. 용신은 점수에 반영되지 않습니다</strong><p>조후·억부 기준 용신을 계산하고 설명에는 사용하지만 최종 점수 함수에서는 받기만 하고 사용하지 않습니다. 표시 내용과 점수 기준이 분리되어 있습니다.</p></article>
+        <article class="limit"><strong>4. 대운 반영이 단순한 오행 추가입니다</strong><p>대운 천간 0.7과 지장간 비율만 더합니다. 대운과 원국 사이의 새로운 합·충, 위치 관계, 용희, 십성, 신살의 가감은 아직 재계산하지 않습니다.</p></article>
+        <article class="limit"><strong>5. 여덟 시기를 모두 같은 비중으로 봅니다</strong><p>1대운과 8대운의 균형 점수를 단순 평균합니다. 가까운 생애 구간, 긴 체감 기간, 부모가 중요하게 보는 시기를 별도로 가중하지 않습니다.</p></article>
+        <article class="limit"><strong>6. 추천 제외 조건이 아직 없습니다</strong><p>특정 조건의 후보를 점수 계산 전에 제외하는 게이트가 미구현입니다. 큰 감점이 필요한 후보도 다른 가점으로 상쇄되어 상위에 남을 수 있습니다.</p></article>
+        <article class="limit"><strong>7. 시간 후보가 2시간 단위입니다</strong><p>각 구간 시작 시각의 정각만 계산합니다. 분 단위 후보를 탐색하지 않으므로 시진 경계 안의 세밀한 차이는 비교하지 못합니다.</p></article>
+        <article class="limit"><strong>8. 가중치는 검증된 확률이 아닙니다</strong><p>17.5라는 목표, 구간별 K, 길흉 가감점은 현재 서비스가 채택한 규칙입니다. 통계적 예측 정확도나 삶의 질을 보증하는 점수가 아닙니다.</p></article>
+      </div>
+      <div class="priority"><b>개선 우선순위 제안:</b> ① 점수 포화와 K 경계의 연속성 개선 → ② 추천 제외 조건 구현 → ③ 용신·대운 상호작용을 점수에 연결 → ④ 분 단위 탐색과 회귀 테스트 확대.</div>
+    </section>
+
+    <section class="surface">
+      <div class="section-head">
+        <div>
+          <p class="kicker">SOURCE OF TRUTH</p>
+          <h2>확인한 실제 코드</h2>
+        </div>
+      </div>
+      <p class="muted">이 HTML은 기존 설명 문서만 옮긴 것이 아니라 아래 구현을 직접 읽고, <code>calculateLuckyDays()</code>를 다시 실행한 결과로 작성했습니다.</p>
+      <div class="source-list">
+        <code>lib/lucky-days.ts — 후보 생성·시간 보정·정렬</code>
+        <code>lib/saju/element-qi.ts — 오행 기도와 대운 추가</code>
+        <code>lib/saju/strength-index.ts — 강약값·균형 점수</code>
+        <code>lib/saju/base-score.ts — 대운 평균·가감점·최종 점수</code>
+        <code>lib/saju/yongshin.ts — 용신 판단과 설명</code>
+        <code>criteria.md — 현재 규칙 설명서</code>
+      </div>
+    </section>
+
+    <footer>Ferfecday · 현재 구현 설명용 문서 · 점술 결과는 가능성과 경향을 해석하는 참고 콘텐츠입니다.</footer>
+  </main>
+
+  <script>
+    const samples = {
+      female1: {
+        title: "여아·서울 1위", meta: "2026-08-22 · 04:00~06:00 인시 · 서울 보정 −32분", pillar: "무진(戊辰) 일주",
+        si: 17.78, daewoon: [99.55, 99.93, 99.13, 98.45, 89.63, 97.79, 98.53, 98.94], adj: [4, .5, .1]
+      },
+      female2: {
+        title: "여아·서울 2위", meta: "2026-08-22 · 02:00~04:00 축시 · 서울 보정 −32분", pillar: "무진(戊辰) 일주",
+        si: 22.60, daewoon: [99.77, 99.38, 99.81, 99.11, 91.89, 98.43, 97.81, 99.61], adj: [1, .5, 2.3]
+      },
+      female3: {
+        title: "여아·서울 3위", meta: "2026-08-20 · 08:00~10:00 진시 · 서울 보정 −32분", pillar: "병인(丙寅) 일주",
+        si: 7.09, daewoon: [98.96, 99.75, 92.34, 88.92, 98.50, 94.64, 86.16, 85.86], adj: [5, 1, .8]
+      },
+      male1: {
+        title: "남아·서울 1위", meta: "2026-08-22 · 04:00~06:00 인시 · 서울 보정 −32분", pillar: "무진(戊辰) 일주",
+        si: 17.78, daewoon: [98.82, 98.12, 99.88, 90.09, 98.52, 97.79, 89.63, 98.30], adj: [4, .5, .1]
+      }
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const sampleSelect = $("sample");
+    const siInput = $("si");
+    const dawInputs = $("dawInputs");
+    const adjustmentInputs = [$("adj10"), $("adj11"), $("adj12")];
+
+    for (let index = 0; index < 8; index += 1) {
+      const wrap = document.createElement("div");
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      label.htmlFor = `daw${index}`;
+      label.textContent = `${index + 1}대운`;
+      input.id = `daw${index}`;
+      input.type = "number";
+      input.min = "0";
+      input.max = "100";
+      input.step = "0.01";
+      input.addEventListener("input", updateFinal);
+      wrap.append(label, input);
+      dawInputs.append(wrap);
+    }
+
+    function getBaseScore(si) {
+      let grade;
+      let k;
+      if (si > 30) [grade, k] = ["극신강", 1.5];
+      else if (si > 5) [grade, k] = ["약신강", .18];
+      else if (si >= -5) [grade, k] = ["중화", .4];
+      else if (si >= -30) [grade, k] = ["약신약", .44];
+      else [grade, k] = ["극신약", .9];
+      return { grade, k, score: Math.max(0, Math.min(100, 100 - Math.abs(17.5 - si) * k)) };
+    }
+
+    function format(value, digits = 2) {
+      return Number(value).toFixed(digits).replace(/\.00$/, "");
+    }
+
+    function signed(value) {
+      const n = Number(value);
+      return `${n > 0 ? "+" : ""}${format(n)}`;
+    }
+
+    function updateSi() {
+      const si = Number(siInput.value);
+      const base = getBaseScore(si);
+      $("siValue").textContent = `${format(si)}%`;
+      $("grade").textContent = base.grade;
+      $("originalBase").textContent = format(base.score);
+    }
+
+    function updateFinal() {
+      const scores = Array.from(dawInputs.querySelectorAll("input"), (input) => Number(input.value) || 0);
+      const adjs = adjustmentInputs.map((input) => Number(input.value) || 0);
+      const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      const raw = average + adjs.reduce((sum, value) => sum + value, 0);
+      const final = Math.max(0, Math.min(100, raw));
+
+      $("avgScore").textContent = format(average);
+      $("adj10Out").textContent = signed(adjs[0]);
+      $("adj11Out").textContent = signed(adjs[1]);
+      $("adj12Out").textContent = signed(adjs[2]);
+      $("finalScore").textContent = format(final);
+      $("avgBar").style.width = `${Math.max(0, Math.min(100, average))}%`;
+      ["adj10Bar", "adj11Bar", "adj12Bar"].forEach((id, index) => {
+        const value = adjs[index];
+        const bar = $(id);
+        bar.style.width = `${Math.min(100, Math.abs(value) * 10)}%`;
+        bar.style.background = value < 0 ? "var(--red)" : "var(--green)";
+      });
+
+      const cappedText = raw > 100 ? ` 100점 상한으로 ${format(raw - 100)}점이 잘렸습니다.` : raw < 0 ? ` 0점 하한으로 제한되었습니다.` : " 상·하한 제한은 적용되지 않았습니다.";
+      $("rawNote").innerHTML = `내부 합계는 <b class="number">${format(raw)}</b>점입니다.${cappedText}`;
+      $("dawBars").innerHTML = scores.map((score, index) => `<div class="daw-bar" style="--height:${Math.max(0, Math.min(100, score))}%"><b>${format(score, 1)}</b><span>${index + 1}대운</span></div>`).join("");
+    }
+
+    function loadSample() {
+      const sample = samples[sampleSelect.value];
+      $("sampleTitle").textContent = sample.title;
+      $("sampleMeta").textContent = sample.meta;
+      $("samplePillar").textContent = sample.pillar;
+      siInput.value = sample.si;
+      Array.from(dawInputs.querySelectorAll("input")).forEach((input, index) => { input.value = sample.daewoon[index]; });
+      adjustmentInputs.forEach((input, index) => { input.value = sample.adj[index]; });
+      updateSi();
+      updateFinal();
+    }
+
+    sampleSelect.addEventListener("change", loadSample);
+    siInput.addEventListener("input", updateSi);
+    adjustmentInputs.forEach((input) => input.addEventListener("input", updateFinal));
+    loadSample();
+  </script>
+</body>
+</html>

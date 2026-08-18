@@ -25,6 +25,7 @@
 
 ### AI 사주 해석 연결
 
+- 사주 해설의 품질 판단, 생성, 테스트, 후속 개선은 [`strategy_saju_explain.md`](./strategy_saju_explain.md)를 기준으로 진행한다.
 - 상세 리포트는 `NEXT_PUBLIC_SAJU_REPORT_API_URL`이 설정되면 해당 보호 API에 사주 데이터를 POST한다.
 - 요청 모델은 `gpt-5.5`이며 응답은 사용자 친화적인 제목과 본문을 가진 `sections` 배열 8~12개를 반환한다. 권장값은 10개이며 각 항목은 `id`, `icon`, `title`, `body`를 가진다.
 - OpenAI API 키는 정적 앱에 넣지 않는다. Supabase Edge Function 등 서버 측 보호 API에서만 관리한다.

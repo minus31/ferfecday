@@ -31,6 +31,7 @@ import { getDayPillarProfile } from "@/lib/saju/day-pillar-profiles";
 import {
   buildFriendlySajuSections,
   buildIntegratedSajuReport,
+  evaluateFriendlySajuSections,
   sanitizeFriendlySajuText,
   type FriendlyReportSection,
   type FriendlySectionIcon,
@@ -147,10 +148,10 @@ function GanjiValue({ char, compact = false }: { char: string; compact?: boolean
   const hangul = STEM_KO[char] ?? BRANCH_KO[char] ?? char;
   return (
     <div className={cn("font-bold leading-none", ELEMENT_TEXT_CLASS[element])}>
-      <span className={compact ? "text-2xl" : "text-3xl sm:text-4xl"}>{char}</span>
-      <span className={cn("ml-1 font-semibold", compact ? "text-xs" : "text-sm")}>{hangul}</span>
+      <span className={compact ? "text-2xl" : "text-xl sm:text-4xl"}>{char}</span>
+      <span className={cn("ml-0.5 font-semibold sm:ml-1", compact ? "text-xs" : "text-[10px] sm:text-sm")}>{hangul}</span>
       {!compact && (
-        <span className="mt-1 block text-[10px] font-medium opacity-75">
+        <span className="mt-1 block text-[9px] font-medium opacity-75 sm:text-[10px]">
           {ELEMENT_KO[element]} · {ELEMENT_HANJA[element]}
         </span>
       )}
@@ -172,23 +173,21 @@ function SajuTable({ day }: { day: LuckyDay }) {
 
   return (
     <Section title="사주 테이블">
-      <div className="overflow-x-auto rounded-md border border-border">
-        <div className="min-w-[34rem]">
-        <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-xs font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-          <div className="border-r border-border p-2" />
-          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-2 last:border-r-0">{pillar.name}</div>)}
+      <div className="w-full rounded-md border border-border">
+        <div className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-[10px] font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+          <div className="border-r border-border p-1.5 sm:p-2" />
+          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-1.5 last:border-r-0 sm:p-2">{pillar.name}</div>)}
         </div>
         {rows.map((row, rowIndex) => (
-          <div key={`${row.label}-${rowIndex}`} className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[11px] sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-            <div className="flex items-center justify-start border-r border-border bg-background p-2 font-semibold text-muted-foreground">{row.label}</div>
+          <div key={`${row.label}-${rowIndex}`} className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[10px] sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+            <div className="flex items-center justify-center border-r border-border bg-background p-1 font-semibold text-muted-foreground sm:justify-start sm:p-2">{row.label}</div>
             {day.pillars.map((pillar, index) => (
-              <div key={`${pillar.name}-${row.label}`} className={cn("flex min-w-0 items-center justify-center border-r border-border px-1.5 py-2 font-medium last:border-r-0", row.className)}>
+              <div key={`${pillar.name}-${row.label}`} className={cn("flex min-w-0 items-center justify-center overflow-hidden border-r border-border px-0.5 py-2 font-medium last:border-r-0 sm:px-1.5", row.className)}>
                 {row.render(pillar, index)}
               </div>
             ))}
           </div>
         ))}
-        </div>
       </div>
     </Section>
   );
@@ -259,20 +258,18 @@ function getPillarStars(day: LuckyDay, index: number) {
 function StarsTable({ day }: { day: LuckyDay }) {
   return (
     <Section title="신살과 길성">
-      <div className="overflow-x-auto rounded-md border border-border">
-        <div className="min-w-[34rem]">
-        <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-xs font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-          <div className="border-r border-border p-2" />
-          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-2 last:border-r-0">{pillar.name}</div>)}
+      <div className="w-full rounded-md border border-border">
+        <div className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-[10px] font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+          <div className="border-r border-border p-1.5 sm:p-2" />
+          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-1.5 last:border-r-0 sm:p-2">{pillar.name}</div>)}
         </div>
-        <div className="grid grid-cols-[3.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[10px] leading-5 sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-          <div className="flex items-center border-r border-border bg-background p-2 font-semibold text-muted-foreground">지지</div>
+        <div className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[9px] leading-5 sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
+          <div className="flex items-center justify-center border-r border-border bg-background p-1 font-semibold text-muted-foreground sm:justify-start sm:p-2">지지</div>
           {day.pillars.map((pillar, index) => (
-            <div key={pillar.name} className="min-h-24 border-r border-border p-2 last:border-r-0">
+            <div key={pillar.name} className="min-h-24 overflow-hidden border-r border-border px-0.5 py-2 last:border-r-0 sm:p-2">
               {getPillarStars(day, index).length ? getPillarStars(day, index).map((star) => <p key={star}>{star}</p>) : <p className="text-muted-foreground">-</p>}
             </div>
           ))}
-        </div>
         </div>
       </div>
     </Section>
@@ -454,10 +451,14 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
           daewoonAnalysis: integratedReport.daewoon,
         },
         output: {
+          strategyVersion: "strategy_saju_explain.v1",
           language: "ko",
           audience: "parents expecting this baby; describe the child's temperament and life tendencies",
-          style: "plain, warm Korean for non-experts; never use internal codes or technical terms such as SI, gido, yongshin, gyeokguk or daewoon",
-          sections: "return 10 items with id, icon, friendly chart-specific title and 1-3 plain-language paragraphs",
+          style: "plain, warm Korean for non-experts; use cautious possibility language; never use internal codes or unexplained terms such as SI, gido, yongshin, gyeokguk or daewoon",
+          title: "10-55 Korean characters; state an observable child trait or useful parenting implication; never use a landscape, natural object, or traditional symbolic image as the title",
+          sections: "return 10 items with id, icon, a chart-specific title, and exactly 2 readable paragraphs totaling 180-700 Korean characters and at least 4 sentences",
+          contentStructure: "for every section connect chart evidence to interpretation, then add a concrete home/school/play simulation, an observable sign, and an action or question parents can try; do not pad with decorative prose",
+          examples: "prefer clearly labeled hypothetical child scenarios and comparisons with the same dominant pattern; use a celebrity only when birth date and time and the exact relevant chart structure are verified, cited, and presented as an analogy rather than proof",
         },
       }),
       signal: controller.signal,
@@ -477,7 +478,7 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
             title: sanitizeFriendlySajuText(section.title as string),
             body: sanitizeFriendlySajuText(section.body as string),
           }));
-        if (generatedSections && generatedSections.length >= 8 && generatedSections.length <= 12) {
+        if (generatedSections && evaluateFriendlySajuSections(generatedSections, day).accepted) {
           setSections(generatedSections);
           setSource("gpt-5.5");
         } else {
