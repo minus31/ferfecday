@@ -23,6 +23,12 @@
 
 별도의 Backend 서버 없이, 정적 Next.js 앱으로 시작한다. Toss 미니앱 배포는 `ait build` 산출물을 사용한다.
 
+### Apps in Toss 3.x
+
+- Node.js 24 이상을 사용한다. 로컬에서는 `nvm use`로 `.nvmrc`의 버전을 적용한다.
+- `npm run build`는 Next.js 정적 export와 AIT 아티팩트 생성을 차례로 실행한다.
+- 보호 API를 연결할 때는 `https://birthdaygift.web.tossmini.com`, `https://birthdaygift.private-web.tossmini.com`을 CORS 허용 Origin에 등록한다.
+
 ### AI 사주 해석 연결
 
 - 사주 해설의 품질 판단, 생성, 테스트, 후속 개선은 [`strategy_saju_explain.md`](./strategy_saju_explain.md)를 기준으로 진행한다.

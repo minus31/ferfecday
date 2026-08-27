@@ -122,29 +122,25 @@
 
 ### Toss Mini App
 
-- `@apps-in-toss/web-framework`를 설치했다.
-- `npx ait init --app-name birthdaygift`로 웹 프레임워크 설정을 초기화했다.
-- `granite.config.ts`를 추가했다.
+- `@apps-in-toss/web-framework` 3.x를 설치했다.
+- `ait migrate v3`로 웹 프레임워크 설정을 마이그레이션했다.
+- `apps-in-toss.config.ts`를 추가했다.
   - `appName`: `birthdaygift`
-  - `brand.displayName`: `생일선물`
-  - `web.commands.dev`: `next dev`
-  - `web.commands.build`: `next build`
-  - `outdir`: `out`
+  - `brand.primaryColor`: `#3182F6`
+  - `webBundleDir`: `out`
 - Next.js는 `output: "export"` 정적 export 모드로 전환했다.
 - 서버 API Route를 제거하고 결과 계산을 클라이언트 실행 가능한 `lib/lucky-days.ts`로 이동했다.
-- `npm run build`는 `ait build`를 실행해 `birthdaygift.ait` 아티팩트를 생성한다.
+- `npm run build`는 정적 Next.js export 후 `ait build`를 실행해 `birthdaygift.ait` 아티팩트를 생성한다.
 - 기존 Next 검증용 명령은 `npm run next:build`로 유지한다.
 
 ## 현재 남은 부분
 
-- 6장 최종 점수 공식은 의도적으로 아직 구현하지 않았다.
-- 6장 추천 제외 조건 게이트는 아직 구현하지 않았다.
 - 분 단위 후보 생성은 아직 없다. 현재 후보는 2시간 단위다.
-- scoring 수식 검증용 단위 테스트가 아직 없다.
 - 같은 오행을 가진 일부 지장간은 오행 총량 관점에서 0 비율 행으로 사실상 접혀 있다. 대표 용신 글자 선정은 현재 7장 breakdown에 남는 후보 기준으로 동작한다.
+- 용신과 조후는 설명에는 반영되지만 점수에는 아직 반영되지 않는다.
 
 ## 다음 구현 순서
 
-1. 6장 추천 제외 조건 게이트 구현.
-2. 6장 전체 scoring system 업데이트.
-3. 원국 scoring 안정화 후 대운에 따른 사주 점수 반영.
+1. 실제 후보군의 점수 분포, 100점 포화율, 0점 제외율 측정.
+2. 용신과 조후의 점수 반영 정책 확정.
+3. 대운별 용희신, 십성, 신살 가감점 구현.

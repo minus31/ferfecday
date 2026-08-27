@@ -9,7 +9,8 @@
 ## Stack
 
 - Framework: Next.js App Router with static export
-- Toss: `@apps-in-toss/web-framework`, `ait build`
+- Toss: `@apps-in-toss/web-framework` 3.x, `ait build`
+- Runtime: Node.js 24 or newer
 - Language: TypeScript
 - UI: React, Tailwind CSS v4, shadcn-style components, Radix UI primitives
 - Date UI: `react-day-picker`, `date-fns`
@@ -34,7 +35,7 @@
 - `app/page.tsx`: Home page and date-range submit flow.
 - `app/results/page.tsx`: Results page, local Top10 computation, detail dialog state.
 - `lib/lucky-days.ts`: Static/client-safe lucky day candidate generation and scoring.
-- `granite.config.ts`: Apps in Toss configuration.
+- `apps-in-toss.config.ts`: Apps in Toss 3.x configuration.
 - `components/date-range-picker.tsx`: Date range picker with max 3-day selection.
 - `components/lucky-day-card.tsx`: Lucky-day card UI with locked and featured states.
 - `components/lucky-day-detail-dialog.tsx`: Detail modal for a selected lucky day.
