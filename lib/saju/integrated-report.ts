@@ -63,9 +63,11 @@ const GANJI_READING: Record<string, string> = {
 
 const YUKA_BY_STRENGTH: Record<LuckyDay["strength"]["grade"], string> = {
   "extremely-strong": "아이의 강한 주도성을 억누르기보다 선택권과 책임을 함께 주고, 협력하고 양보하는 경험을 자주 만들어 주세요.",
+  strong: "아이의 주도성을 충분히 살리면서 다른 사람의 의견을 듣고 조율하는 경험도 함께 만들어 주세요.",
   "slightly-strong": "아이가 스스로 계획하고 끝까지 해보게 돕되, 결과만큼 과정에서 다른 사람의 의견을 듣는 태도를 칭찬해 주세요.",
   neutral: "학습·놀이·관계 경험을 고르게 제공하고, 아이가 좋아하는 분야를 스스로 발견할 수 있도록 관찰해 주세요.",
   "slightly-weak": "작은 선택을 직접 완수하는 경험을 반복해 자신감을 키우고, 예측 가능한 생활 리듬과 충분한 격려를 제공해 주세요.",
+  weak: "익숙한 환경에서 작은 결정을 직접 완수하게 하며 자신감과 생활 리듬을 차근차근 키워 주세요.",
   "extremely-weak": "새로운 환경은 천천히 익히게 하고, 성취를 재촉하기보다 안정적인 애착과 작은 성공 경험부터 쌓아 주세요.",
 };
 
@@ -103,17 +105,21 @@ const ROLE_OBSERVATION: Record<keyof LuckyDay["strength"]["roleQi"], string> = {
 
 const STRENGTH_CHILD_TONE: Record<LuckyDay["strength"]["grade"], string> = {
   "extremely-strong": "주도성이 매우 강해 자신의 방향을 힘있게 개척하려는 모습이 두드러질 수 있습니다.",
+  strong: "자기 생각과 추진력이 강해 새로운 일을 주도하려는 모습이 자주 나타날 수 있습니다.",
   "slightly-strong": "건강한 자신감을 바탕으로 새로운 일을 주도하면서도 주변과 균형을 맞출 수 있습니다.",
   neutral: "상황에 맞춰 유연하게 반응하며 여러 기질을 비교적 고르게 펼칠 수 있습니다.",
   "slightly-weak": "주변을 세심하게 살피고 충분히 생각한 뒤 움직이는 신중한 아이로 성장할 가능성이 큽니다.",
+  weak: "주변의 분위기를 세심하게 살피며 익숙함과 확신이 생긴 뒤 움직이는 경향이 나타날 수 있습니다.",
   "extremely-weak": "환경과 관계를 민감하게 받아들이는 만큼 안정감 속에서 섬세한 장점을 키우기 좋습니다.",
 };
 
 const STRENGTH_SCENARIO: Record<LuckyDay["strength"]["grade"], string> = {
   "extremely-strong": "새로운 놀이를 시작하면 규칙과 역할을 먼저 정하려 할 수 있고, 뜻대로 되지 않을 때 목소리나 행동이 커질 수 있습니다.",
+  strong: "새로운 놀이에서 먼저 방향을 제안하고 친구들을 이끌 수 있으며, 역할을 나누는 연습을 함께하면 좋습니다.",
   "slightly-strong": "낯선 모둠에서도 먼저 의견을 내면서 친구의 제안을 받아들일 여지가 있어, 주도하는 역할과 돕는 역할을 모두 경험시키기 좋습니다.",
   neutral: "익숙한 활동에서는 앞장서고 처음 보는 환경에서는 잠시 지켜보는 식으로, 상황에 따라 참여 속도가 달라질 수 있습니다.",
   "slightly-weak": "처음 가는 교실이나 처음 만나는 사람 앞에서는 부모의 반응을 확인한 뒤 천천히 참여하지만, 익숙해지면 자기 몫을 꾸준히 해낼 수 있습니다.",
+  weak: "낯선 활동에서는 충분히 관찰한 뒤 참여할 수 있으므로, 미리 순서와 기대를 설명하면 자기 속도로 해낼 수 있습니다.",
   "extremely-weak": "갑작스러운 일정 변경이나 큰 소리처럼 예상하지 못한 자극 뒤에는 평소보다 말수가 줄거나 부모 곁에 오래 머물 수 있습니다.",
 };
 
@@ -155,6 +161,10 @@ const STRENGTH_FRIENDLY_COPY: Record<LuckyDay["strength"]["grade"], { title: str
     title: "자기주장이 강할수록 선택과 책임을 함께 알려주세요",
     body: "자기 의지와 추진력이 매우 선명해 스스로 길을 만들려는 힘이 큽니다. 억누르기보다 선택에 따른 책임을 알려주고, 양보와 협력이 더 큰 성취를 만든다는 경험을 자주 보여 주세요.",
   },
+  strong: {
+    title: "힘 있는 주도성을 조율하는 경험이 중요해요",
+    body: "자기 생각을 실행으로 옮기고 주변을 이끄는 힘이 큽니다. 선택권과 책임을 함께 주고, 다른 의견을 들은 뒤 더 좋은 방법을 찾는 경험을 반복해 주세요.",
+  },
   "slightly-strong": {
     title: "주도성과 협동심을 함께 키우기 좋은 아이",
     body: "자기 생각을 밀고 나갈 힘과 주변 상황을 살피는 여유가 비교적 잘 어우러집니다. 도전할 기회를 충분히 주되, 도움을 요청하고 의견을 나누는 것도 능력임을 알려 주세요.",
@@ -166,6 +176,10 @@ const STRENGTH_FRIENDLY_COPY: Record<LuckyDay["strength"]["grade"], { title: str
   "slightly-weak": {
     title: "충분히 살펴본 뒤 움직이는 신중한 아이",
     body: "주변의 분위기와 사람의 마음을 세심하게 읽고 충분히 생각한 뒤 행동하는 편입니다. 작은 선택을 직접 끝내는 경험과 구체적인 칭찬이 쌓이면 조심성이 단단한 자신감으로 바뀝니다.",
+  },
+  weak: {
+    title: "익숙함 속에서 작은 성공을 차근차근 쌓아주세요",
+    body: "주변을 세심하게 살핀 뒤 확신이 생겨야 움직이는 편입니다. 예측 가능한 순서와 작은 선택권을 제공하면 조심성이 안정적인 실행력으로 자랍니다.",
   },
   "extremely-weak": {
     title: "변화에 민감한 아이에게는 익숙한 일상이 먼저예요",
@@ -458,7 +472,7 @@ export function buildIntegratedSajuReport(day: LuckyDay): IntegratedReportResult
   const daewoon = buildDaewoonInterpretations(day);
   const yongshin = `${day.yongshin.method === "johu" ? "조후" : "억부"}용신 ${ELEMENT_KO[day.yongshin.element]}`;
   const monthSipsin = SIPSIN_KO[day.pillars[2].branchSipsin] ?? day.pillars[2].branchSipsin;
-  const basicFallback = `부모님께서 맞이할 아기는 ${day.dayPillarHangul}(${day.dayPillar}) 일주의 기질을 지녔습니다. 일간은 ${GANJI_READING[day.pillars[1].stem]}(${day.pillars[1].stem})이고 신강도는 ${day.strength.gradeLabel}(SI ${day.strength.si.toFixed(2)}%)입니다. 오행의 많고 적음만 보지 않고 ${yongshin}이 실제로 작동할 통로와 십성의 균형을 함께 살펴야 합니다.`;
+  const basicFallback = `부모님께서 맞이할 아기는 ${day.dayPillarHangul}(${day.dayPillar}) 일주의 기질을 지녔습니다. 일간은 ${GANJI_READING[day.pillars[1].stem]}(${day.pillars[1].stem})이고 신강도는 ${day.strength.gradeLabel}(SI ${day.strength.si.toFixed(4)})입니다. 오행의 많고 적음만 보지 않고 ${yongshin}이 실제로 작동할 통로와 십성의 균형을 함께 살펴야 합니다.`;
   const gyeokRules = knowledge.theme2.filter((rule) => rule.category === "GYEOKGUK_MASTER");
   const talentRules = knowledge.theme2.filter((rule) => rule.category !== "GYEOKGUK_MASTER");
   const structureFallback = `아이의 월지 중심 십성은 ${monthSipsin}으로, ${monthSipsin}격 관점의 기본 틀을 가집니다. 격국은 아이의 재능이 장차 사회에서 쓰이는 방식을 읽는 기준이며 천간 투출, 성립·파격·구응과 오행의 생극 흐름을 전체적으로 확인해야 합니다.`;

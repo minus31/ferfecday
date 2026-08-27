@@ -291,8 +291,9 @@ function Yongshin({ day }: { day: LuckyDay }) {
 }
 
 function StrengthChart({ day }: { day: LuckyDay }) {
-  const labels = ["극신약", "태신약", "약신약", "중화신약", "중화신강", "약신강", "태신강", "극신강"];
-  const position = Math.max(0, Math.min(100, (day.strength.si + 50) / 100 * 100));
+  const labels = ["극신약", "신약", "약신약", "중화", "약신강", "신강", "극신강"];
+  const gradeIndex = labels.indexOf(day.strength.gradeLabel);
+  const position = gradeIndex >= 0 ? (gradeIndex / (labels.length - 1)) * 100 : 50;
   return (
     <Section title="신강 / 신약 지수">
       <div className="rounded-md border border-border bg-background p-4 sm:p-6">
@@ -302,7 +303,8 @@ function StrengthChart({ day }: { day: LuckyDay }) {
           <span>득시 {day.strength.supportQi >= day.strength.drainControlQi ? "●" : "×"}</span>
           <strong className="text-primary">{day.strength.gradeLabel}</strong>
         </div>
-        <p className="mt-5 text-sm leading-7">이 사주는 <strong>{day.strength.gradeLabel}</strong>에 해당합니다. 생조 {day.strength.supportQi.toFixed(1)}와 극설 {day.strength.drainControlQi.toFixed(1)}의 균형으로 산출했습니다.</p>
+        <p className="mt-5 text-sm leading-7">이 사주는 <strong>{day.strength.gradeLabel}</strong>에 해당합니다. 생조 {day.strength.supportQi.toFixed(1)}, 극설 {day.strength.drainControlQi.toFixed(1)}, SI {day.strength.si.toFixed(4)}, 기도 편차 σ {day.strength.sigma.toFixed(2)}%를 사용했습니다.</p>
+        {day.strength.exclusionReason && <p className="mt-2 text-xs leading-5 text-muted-foreground">{day.strength.exclusionReason} 조건으로 Base Score가 {day.strength.baseScore.toFixed(1)}점으로 고정됐습니다.</p>}
         <div className="mt-10">
           <div className="relative h-6">
             <div className="absolute inset-x-0 top-2 h-2 rounded-full bg-gradient-to-r from-sky-300 via-stone-200 to-rose-300" />
@@ -311,7 +313,7 @@ function StrengthChart({ day }: { day: LuckyDay }) {
               <div className="size-6 rounded-full border-4 border-card bg-primary shadow" />
             </div>
           </div>
-          <div className="mt-2 grid grid-cols-4 gap-y-2 text-center text-[9px] text-muted-foreground sm:grid-cols-8 sm:text-xs">
+          <div className="mt-2 grid grid-cols-7 text-center text-[8px] text-muted-foreground sm:text-xs">
             {labels.map((label) => <span key={label}>{label}</span>)}
           </div>
         </div>

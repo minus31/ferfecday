@@ -1,91 +1,115 @@
 import type { SajuResult } from "@orrery/core/types";
 
 import {
+  ELEMENT_KEYS,
   ELEMENT_ROLE_LABELS,
   getDayMasterElement,
   getElementRoleQi,
+  type ElementQiKey,
   type ElementQiResult,
   type ElementRole,
   type ElementRoleQi,
 } from "@/lib/saju/element-qi";
 
 export type StrengthGrade =
+  | "extremely-strong"
+  | "strong"
   | "slightly-strong"
   | "neutral"
   | "slightly-weak"
-  | "extremely-strong"
+  | "weak"
   | "extremely-weak";
 
 export interface StrengthIndexResult {
-  dayMasterElement: "tree" | "fire" | "earth" | "metal" | "water";
+  dayMasterElement: ElementQiKey;
   roleQi: Record<ElementRole, ElementRoleQi>;
   supportQi: number;
   drainControlQi: number;
   si: number;
+  siScore: number;
+  sigma: number;
+  sigmaScore: number;
   grade: StrengthGrade;
   gradeLabel: string;
-  k: number;
   baseScore: number;
-  targetScoreRange: [number, number];
+  exclusionReason: string | null;
   description: string;
+}
+
+export interface StrengthScoreInput {
+  percentages: Record<ElementQiKey, number>;
+  supportQi: number;
+  drainControlQi: number;
+}
+
+export interface StrengthScoreResult {
+  si: number;
+  siScore: number;
+  sigma: number;
+  sigmaScore: number;
+  grade: StrengthGrade;
+  gradeLabel: string;
+  baseScore: number;
+  exclusionReason: string | null;
 }
 
 interface StrengthGradeRule {
   grade: StrengthGrade;
   label: string;
-  k: number;
-  targetScoreRange: [number, number];
+  siScore: number;
   description: string;
   matches: (si: number) => boolean;
 }
-
-const OPTIMAL_SI = 17.5;
 
 const STRENGTH_GRADE_RULES: StrengthGradeRule[] = [
   {
     grade: "extremely-strong",
     label: "극신강",
-    k: 1.5,
-    targetScoreRange: [50, 65],
-    description:
-      "고집과 아집이 강해 타인과 충돌하기 쉽고, 부모나 배우자의 통제를 벗어나는 외고집 기질.",
-    matches: (si) => si > 30,
+    siScore: 25,
+    description: "생조가 극설보다 매우 강한 구조입니다.",
+    matches: (si) => si >= 0.5,
+  },
+  {
+    grade: "strong",
+    label: "신강",
+    siScore: 35,
+    description: "생조가 극설보다 강한 구조입니다.",
+    matches: (si) => si >= 0.2,
   },
   {
     grade: "slightly-strong",
     label: "약신강",
-    k: 0.18,
-    targetScoreRange: [96, 100],
-    description:
-      "주도성과 강인한 생활력, 뛰어난 재물/명예 취득 능력을 지닌 엘리트형 사주.",
-    matches: (si) => si > 5 && si <= 30,
+    siScore: 50,
+    description: "생조가 극설보다 조금 강한 구조입니다.",
+    matches: (si) => si >= 0.05,
   },
   {
     grade: "neutral",
     label: "중화",
-    k: 0.4,
-    targetScoreRange: [90, 95],
-    description:
-      "일평생 큰 굴곡이나 풍파 없이 안정되고 무탈하며 건강하게 살아가는 균형 잡힌 사주.",
-    matches: (si) => si >= -5 && si <= 5,
+    siScore: 45,
+    description: "생조와 극설이 균형에 가까운 구조입니다.",
+    matches: (si) => si >= -0.05,
   },
   {
     grade: "slightly-weak",
     label: "약신약",
-    k: 0.44,
-    targetScoreRange: [75, 89],
-    description:
-      "신중하고 계획적이며, 후천적인 대운에서 인성/비겁의 돕는 운이 들어올 때 발복하는 사주.",
-    matches: (si) => si >= -30 && si < -5,
+    siScore: 40,
+    description: "극설이 생조보다 조금 강한 구조입니다.",
+    matches: (si) => si >= -0.2,
+  },
+  {
+    grade: "weak",
+    label: "신약",
+    siScore: 35,
+    description: "극설이 생조보다 강한 구조입니다.",
+    matches: (si) => si >= -0.5,
   },
   {
     grade: "extremely-weak",
     label: "극신약",
-    k: 0.9,
-    targetScoreRange: [30, 49],
-    description:
-      "주체성이 부족하여 쉽게 피로하고 예민하며, 타인에게 의존하거나 이용당하기 쉬운 사주.",
-    matches: (si) => si < -30,
+    siScore: 20,
+    description: "극설이 생조보다 매우 강한 구조입니다.",
+    matches: () => true,
   },
 ];
 
@@ -94,17 +118,71 @@ function round(value: number, digits: number) {
   return Math.round(value * factor) / factor;
 }
 
-function clampScore(value: number) {
-  return Math.max(0, Math.min(100, value));
+function getStrengthGradeRule(si: number) {
+  return STRENGTH_GRADE_RULES.find((rule) => rule.matches(si)) as StrengthGradeRule;
 }
 
-function getStrengthGradeRule(si: number) {
-  return STRENGTH_GRADE_RULES.find((rule) => rule.matches(si)) ?? STRENGTH_GRADE_RULES[2];
+function getExclusion(
+  percentages: Record<ElementQiKey, number>,
+): { score: number; reason: string } | null {
+  const values = ELEMENT_KEYS.map((element) => percentages[element]);
+  const zeroCount = values.filter((value) => value === 0).length;
+  const over50Count = values.filter((value) => value >= 50).length;
+  const over40Count = values.filter((value) => value >= 40).length;
+
+  if (zeroCount >= 2) {
+    return { score: 0, reason: `기도비율 0% 오행 ${zeroCount}개` };
+  }
+  if (over50Count >= 1) {
+    return { score: 0, reason: `기도비율 50% 이상 오행 ${over50Count}개` };
+  }
+  if (over40Count >= 2) {
+    return { score: 20, reason: `기도비율 40% 이상 오행 ${over40Count}개` };
+  }
+  if (zeroCount === 1) {
+    return { score: 50, reason: "기도비율 0% 오행 1개" };
+  }
+  return null;
+}
+
+/**
+ * 오행 기도와 생조, 극설을 Base Score로 변환한다.
+ * sigma 계수는 요구 예시(4.73% -> 40.5점)에 맞춰 2를 사용한다.
+ */
+export function calculateStrengthScore({
+  percentages,
+  supportQi,
+  drainControlQi,
+}: StrengthScoreInput): StrengthScoreResult {
+  const exclusion = getExclusion(percentages);
+  const si = drainControlQi > 0
+    ? (supportQi - drainControlQi) / drainControlQi
+    : 0;
+  const gradeRule = getStrengthGradeRule(si);
+  const sigma = Math.sqrt(
+    ELEMENT_KEYS.reduce(
+      (sum, element) => sum + (percentages[element] - 20) ** 2,
+      0,
+    ) / ELEMENT_KEYS.length,
+  );
+  const sigmaScore = Math.max(50 - sigma * 2, 0);
+  const baseScore = exclusion?.score ?? Math.min(gradeRule.siScore + sigmaScore, 100);
+
+  return {
+    si: round(si, 4),
+    siScore: gradeRule.siScore,
+    sigma: round(sigma, 2),
+    sigmaScore: round(sigmaScore, 2),
+    grade: gradeRule.grade,
+    gradeLabel: gradeRule.label,
+    baseScore: round(baseScore, 2),
+    exclusionReason: exclusion?.reason ?? null,
+  };
 }
 
 export function calculateStrengthIndex(
   result: SajuResult,
-  elementQi: Pick<ElementQiResult, "totals" | "percentages">
+  elementQi: Pick<ElementQiResult, "totals" | "percentages">,
 ): StrengthIndexResult {
   const dayMasterElement = getDayMasterElement(result);
 
@@ -118,23 +196,22 @@ export function calculateStrengthIndex(
     roleQi.siksang.percentage +
     roleQi.jaeseong.percentage +
     roleQi.gwanseong.percentage * 1.1;
-  const denominator = supportQi + drainControlQi;
-  const si = denominator > 0 ? ((supportQi - drainControlQi) / denominator) * 100 : 0;
-  const gradeRule = getStrengthGradeRule(si);
-  const baseScore = 100 - Math.abs(OPTIMAL_SI - si) * gradeRule.k;
+  const scoring = calculateStrengthScore({
+    percentages: elementQi.percentages,
+    supportQi,
+    drainControlQi,
+  });
+  const exclusionText = scoring.exclusionReason
+    ? ` 연산 배제 조건(${scoring.exclusionReason})을 적용해 Base Score를 ${scoring.baseScore}점으로 고정했습니다.`
+    : ` SI 점수 ${scoring.siScore}점과 기도 편차 점수 ${scoring.sigmaScore}점을 합산했습니다.`;
 
   return {
     dayMasterElement,
     roleQi,
     supportQi: round(supportQi, 2),
     drainControlQi: round(drainControlQi, 2),
-    si: round(si, 2),
-    grade: gradeRule.grade,
-    gradeLabel: gradeRule.label,
-    k: gradeRule.k,
-    baseScore: round(clampScore(baseScore), 2),
-    targetScoreRange: gradeRule.targetScoreRange,
-    description: `${gradeRule.description} 역할별 기도: ${Object.values(roleQi)
+    ...scoring,
+    description: `${STRENGTH_GRADE_RULES.find((rule) => rule.grade === scoring.grade)?.description ?? ""}${exclusionText} 역할별 기도: ${Object.values(roleQi)
       .map((item) => `${ELEMENT_ROLE_LABELS[item.role]} ${item.percentage.toFixed(2)}%`)
       .join(", ")}`,
   };

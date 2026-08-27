@@ -127,8 +127,8 @@ function getRoleState(day: LuckyDay) {
 function getSiCategory(day: LuckyDay) {
   if (day.strength.grade === "slightly-strong") return "SLIGHT_STRONG";
   if (day.strength.grade === "neutral") return "NEUTRAL";
-  if (day.strength.grade === "extremely-strong") return "EXTREME_STRONG";
-  if (day.strength.grade === "extremely-weak") return "EXTREME_WEAK";
+  if (["strong", "extremely-strong"].includes(day.strength.grade)) return "EXTREME_STRONG";
+  if (["weak", "extremely-weak"].includes(day.strength.grade)) return "EXTREME_WEAK";
   return "SLIGHT_WEAK";
 }
 

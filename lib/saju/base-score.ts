@@ -31,8 +31,11 @@ export interface DaewoonBaseScore {
   ganzi: string;
   si: number;
   gradeLabel: string;
-  k: number;
+  siScore: number;
+  sigma: number;
+  sigmaScore: number;
   baseScore: number;
+  exclusionReason: string | null;
 }
 
 const SIPSIN_BY_ROLE: Record<ElementRole, string[]> = {
@@ -318,8 +321,11 @@ function calculateDaewoonBaseScores(
       ganzi: daewoon.ganzi,
       si: daewoonStrength.si,
       gradeLabel: daewoonStrength.gradeLabel,
-      k: daewoonStrength.k,
+      siScore: daewoonStrength.siScore,
+      sigma: daewoonStrength.sigma,
+      sigmaScore: daewoonStrength.sigmaScore,
       baseScore: daewoonStrength.baseScore,
+      exclusionReason: daewoonStrength.exclusionReason,
     };
   });
 }
@@ -345,7 +351,9 @@ export function calculateBaseScoring(
     {
       label: "8장 Base Score 원국",
       value: strength.baseScore,
-      description: `${strength.gradeLabel} SI ${strength.si.toFixed(2)}%, K=${strength.k}`,
+      description: strength.exclusionReason
+        ? `${strength.exclusionReason}, Base Score 고정 ${strength.baseScore.toFixed(2)}점`
+        : `${strength.gradeLabel} SI ${strength.si.toFixed(4)}, SI 점수 ${strength.siScore.toFixed(2)}, σ ${strength.sigma.toFixed(2)}%, σ 점수 ${strength.sigmaScore.toFixed(2)}`,
     },
     {
       label: "8장 대운 평균 Base Score",
@@ -355,7 +363,7 @@ export function calculateBaseScoring(
           ? daewoonBaseScores
               .map(
                 (item) =>
-                  `${item.index}대운 ${item.ganzi}: ${item.baseScore.toFixed(2)} (${item.gradeLabel} SI ${item.si.toFixed(2)}%, K=${item.k})`
+                  `${item.index}대운 ${item.ganzi}: ${item.baseScore.toFixed(2)} (${item.exclusionReason ?? `${item.gradeLabel} SI ${item.si.toFixed(4)}, σ ${item.sigma.toFixed(2)}%`})`
               )
               .join(" / ")
           : "대운 데이터가 없어 원국 Base Score를 사용합니다.",

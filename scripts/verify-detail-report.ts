@@ -116,9 +116,11 @@ for (const dayPillar of DAY_PILLARS) {
 
 const strengthGrades = [
   "extremely-strong",
+  "strong",
   "slightly-strong",
   "neutral",
   "slightly-weak",
+  "weak",
   "extremely-weak",
 ] as const;
 const primaryRoles = ["bigeop", "siksang", "jaeseong", "gwanseong", "insung"] as const;

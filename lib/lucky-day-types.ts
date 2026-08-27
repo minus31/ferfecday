@@ -70,16 +70,20 @@ export interface LuckyStrengthIndex {
   supportQi: number;
   drainControlQi: number;
   si: number;
+  siScore: number;
+  sigma: number;
+  sigmaScore: number;
   grade:
     | "slightly-strong"
+    | "strong"
     | "neutral"
     | "slightly-weak"
+    | "weak"
     | "extremely-strong"
     | "extremely-weak";
   gradeLabel: string;
-  k: number;
   baseScore: number;
-  targetScoreRange: [number, number];
+  exclusionReason: string | null;
   description: string;
 }
 
@@ -172,8 +176,11 @@ export interface LuckyDay {
       ganzi: string;
       si: number;
       gradeLabel: string;
-      k: number;
+      siScore: number;
+      sigma: number;
+      sigmaScore: number;
       baseScore: number;
+      exclusionReason: string | null;
     }>;
   };
 }
