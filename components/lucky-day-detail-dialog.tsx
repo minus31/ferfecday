@@ -9,7 +9,9 @@ import {
   Compass,
   Heart,
   House,
+  LoaderCircle,
   MessageCircle,
+  RefreshCw,
   Route,
   ShieldCheck,
   Sparkles,
@@ -29,6 +31,13 @@ import {
 import type { LuckyAnnualFortune, LuckyDaewoon, LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
 import { getDayPillarProfile } from "@/lib/saju/day-pillar-profiles";
 import {
+  buildDaewoonNarrativeRequest,
+  buildLocalDaewoonNarrative,
+  getDaewoonPeriod,
+  parseDaewoonNarrative,
+  type DaewoonNarrative,
+} from "@/lib/saju/daewoon-ai";
+import {
   buildFriendlySajuSections,
   buildIntegratedSajuReport,
   evaluateFriendlySajuSections,
@@ -36,6 +45,11 @@ import {
   type FriendlyReportSection,
   type FriendlySectionIcon,
 } from "@/lib/saju/integrated-report";
+import {
+  getSajuReportEndpoint,
+  requestSajuReport,
+  SAJU_REPORT_MODEL,
+} from "@/lib/saju/report-ai";
 import { cn } from "@/lib/utils";
 
 interface LuckyDayDetailDialogProps {
@@ -373,19 +387,144 @@ function FortuneColumn({
   );
 }
 
-function FortuneFlow({ day }: { day: LuckyDay }) {
+type DaewoonNarrativeState =
+  | { status: "prompt" }
+  | { status: "loading" }
+  | { status: "ready"; narrative: DaewoonNarrative; source: "ai" | "local" }
+  | { status: "error" };
+
+function DaewoonNarrativeCard({
+  day,
+  selectedIndex,
+  requested,
+  open,
+}: {
+  day: LuckyDay;
+  selectedIndex: number;
+  requested: boolean;
+  open: boolean;
+}) {
+  const period = React.useMemo(
+    () => getDaewoonPeriod(day, selectedIndex),
+    [day, selectedIndex],
+  );
+  const cacheRef = React.useRef(new Map<string, DaewoonNarrative>());
+  const [retryCount, setRetryCount] = React.useState(0);
+  const [state, setState] = React.useState<DaewoonNarrativeState>({ status: "prompt" });
+
+  React.useEffect(() => {
+    setRetryCount(0);
+    setState({ status: requested ? "loading" : "prompt" });
+  }, [day.id, requested, selectedIndex]);
+
+  React.useEffect(() => {
+    if (!open || !requested || !period) return;
+
+    const cacheKey = `${day.id}:${selectedIndex}`;
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached) {
+      setState({ status: "ready", narrative: cached, source: "ai" });
+      return;
+    }
+
+    const request = buildDaewoonNarrativeRequest(day, selectedIndex);
+    const localNarrative = buildLocalDaewoonNarrative(day, selectedIndex);
+    if (!request) {
+      setState(localNarrative
+        ? { status: "ready", narrative: localNarrative, source: "local" }
+        : { status: "error" });
+      return;
+    }
+
+    const controller = new AbortController();
+    setState({ status: "loading" });
+    requestSajuReport<unknown>(request, controller.signal)
+      .then((payload) => {
+        const narrative = parseDaewoonNarrative(payload);
+        if (!narrative) throw new Error("Invalid daewoon narrative response");
+        cacheRef.current.set(cacheKey, narrative);
+        setState({ status: "ready", narrative, source: "ai" });
+      })
+      .catch((error) => {
+        if ((error as Error).name !== "AbortError") {
+          setState(localNarrative
+            ? { status: "ready", narrative: localNarrative, source: "local" }
+            : { status: "error" });
+        }
+      });
+
+    return () => controller.abort();
+  }, [day, open, period, requested, retryCount, selectedIndex]);
+
+  if (!period) return null;
+
+  return (
+    <div className="mt-5 rounded-xl border border-accent bg-gold-soft/60 p-4 sm:p-5" aria-live="polite">
+      <div className="flex items-start gap-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-primary shadow-sm">
+          <Sparkles className="size-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-primary">AI 성장 흐름</p>
+          <h5 className="mt-1 text-sm font-bold leading-6 sm:text-base">
+            {period.ageRange[0]}~{period.ageRange[1]}세 아이의 운세와 마음 변화
+          </h5>
+        </div>
+      </div>
+
+      {state.status === "prompt" && (
+        <p className="mt-4 text-sm leading-7 text-foreground/75">
+          위 대운을 선택하면 이 시기에 나타날 수 있는 아이의 마음 변화와 부모가 살펴볼 신호를 AI가 정리해 드려요.
+        </p>
+      )}
+      {state.status === "loading" && (
+        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderCircle className="size-4 animate-spin text-primary" aria-hidden="true" />
+          선택한 시기의 흐름을 정리하고 있어요…
+        </div>
+      )}
+      {state.status === "ready" && (
+        <>
+          <div className="mt-4 space-y-3 text-sm leading-7 text-foreground/80 sm:text-[15px]">
+            {state.narrative.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          </div>
+          {state.source === "local" && (
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              AI 연결이 원활하지 않아 계산된 사주 흐름을 바탕으로 한 기본 해설을 보여드렸어요.
+            </p>
+          )}
+        </>
+      )}
+      {state.status === "error" && (
+        <div className="mt-4 flex flex-col items-start gap-3">
+          <p className="text-sm leading-7 text-muted-foreground">AI 해설을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
+          <button
+            type="button"
+            onClick={() => setRetryCount((count) => count + 1)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <RefreshCw className="size-3.5" aria-hidden="true" />
+            다시 생성하기
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FortuneFlow({ day, open }: { day: LuckyDay; open: boolean }) {
   const reversedDaewoon = [...day.daewoon].reverse();
   const [selectedIndex, setSelectedIndex] = React.useState(day.daewoon[0]?.index ?? 1);
-  React.useEffect(() => setSelectedIndex(day.daewoon[0]?.index ?? 1), [day]);
+  const [requestedIndex, setRequestedIndex] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    setSelectedIndex(day.daewoon[0]?.index ?? 1);
+    setRequestedIndex(null);
+  }, [day]);
   const selectedDaewoon = day.daewoon.find((item) => item.index === selectedIndex) ?? day.daewoon[0];
-  const selectedPosition = day.daewoon.findIndex((item) => item.index === selectedDaewoon?.index);
-  const nextDaewoon = selectedPosition >= 0 ? day.daewoon[selectedPosition + 1] : undefined;
-  const birthYear = Number(day.date.slice(0, 4));
-  const startYear = selectedDaewoon ? birthYear + selectedDaewoon.age - 1 : birthYear;
-  const endYear = nextDaewoon ? birthYear + nextDaewoon.age - 2 : startYear + 9;
-  const reversedAnnualFortunes = day.annualFortunes
-    .filter((item) => item.year >= startYear && item.year <= endYear)
-    .reverse();
+  const period = getDaewoonPeriod(day, selectedDaewoon?.index ?? selectedIndex);
+  const startYear = period?.yearRange[0] ?? Number(day.date.slice(0, 4));
+  const endYear = period?.yearRange[1] ?? startYear + 9;
+  const reversedAnnualFortunes = [...(period?.annualFortunes ?? [])].reverse();
 
   return (
     <Section title="대운과 세운">
@@ -396,11 +535,20 @@ function FortuneFlow({ day }: { day: LuckyDay }) {
             key={item.index}
             item={item}
             selected={item.index === selectedDaewoon?.index}
-            onSelect={() => setSelectedIndex(item.index)}
+            onSelect={() => {
+              setSelectedIndex(item.index);
+              setRequestedIndex(item.index);
+            }}
           />
         ))}</div>
       </div>
-      <div className="mt-8 border-t pt-6">
+      <DaewoonNarrativeCard
+        day={day}
+        selectedIndex={selectedDaewoon?.index ?? selectedIndex}
+        requested={requestedIndex === selectedDaewoon?.index}
+        open={open}
+      />
+      <div className="mt-6 border-t pt-6">
         <h4 className="text-lg font-bold">
           세운 <span className="ml-1 text-sm font-normal text-muted-foreground">{startYear}~{endYear}년</span>
         </h4>
@@ -416,59 +564,50 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
   const localSections = React.useMemo(() => buildFriendlySajuSections(day), [day]);
   const [sections, setSections] = React.useState<FriendlyReportSection[]>(() => localSections);
   const [openSectionId, setOpenSectionId] = React.useState(localSections[0]?.id ?? "");
-  const [source, setSource] = React.useState<"local" | "gpt-5.5" | "loading">("local");
+  const [source, setSource] = React.useState<"local" | "ai" | "loading">("local");
 
   React.useEffect(() => {
     setSections(localSections);
     setOpenSectionId(localSections[0]?.id ?? "");
-    const endpoint = process.env.NEXT_PUBLIC_SAJU_REPORT_API_URL;
-    if (!open || !endpoint) {
+    if (!open || !getSajuReportEndpoint()) {
       setSource("local");
       return;
     }
     const controller = new AbortController();
     setSource("loading");
-    fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-5.5",
-        report: {
-          pillars: day.pillars,
-          dayPillar: day.dayPillar,
-          dayPillarProfile,
-          monthBranchSipsin: day.pillars[2].branchSipsin,
-          elementQi: day.elementQi.percentages,
-          strength: day.strength,
-          yongshin: day.yongshin,
-          daewoon: day.daewoon.slice(0, 8),
-          knowledge: {
-            context: integratedReport.knowledge.context,
-            matchedRules: [
-              ...integratedReport.knowledge.theme1,
-              ...integratedReport.knowledge.theme2,
-              ...integratedReport.knowledge.theme3,
-            ],
-          },
-          daewoonAnalysis: integratedReport.daewoon,
+    requestSajuReport<{ sections?: Array<Partial<FriendlyReportSection>> }>({
+      model: SAJU_REPORT_MODEL,
+      task: "full_saju_report",
+      report: {
+        pillars: day.pillars,
+        dayPillar: day.dayPillar,
+        dayPillarProfile,
+        monthBranchSipsin: day.pillars[2].branchSipsin,
+        elementQi: day.elementQi.percentages,
+        strength: day.strength,
+        yongshin: day.yongshin,
+        daewoon: day.daewoon.slice(0, 8),
+        knowledge: {
+          context: integratedReport.knowledge.context,
+          matchedRules: [
+            ...integratedReport.knowledge.theme1,
+            ...integratedReport.knowledge.theme2,
+            ...integratedReport.knowledge.theme3,
+          ],
         },
-        output: {
-          strategyVersion: "strategy_saju_explain.v1",
-          language: "ko",
-          audience: "parents expecting this baby; describe the child's temperament and life tendencies",
-          style: "plain, warm Korean for non-experts; use cautious possibility language; never use internal codes or unexplained terms such as SI, gido, yongshin, gyeokguk or daewoon",
-          title: "10-55 Korean characters; state an observable child trait or useful parenting implication; never use a landscape, natural object, or traditional symbolic image as the title",
-          sections: "return 10 items with id, icon, a chart-specific title, and exactly 2 readable paragraphs totaling 180-700 Korean characters and at least 4 sentences",
-          contentStructure: "for every section connect chart evidence to interpretation, then add a concrete home/school/play simulation, an observable sign, and an action or question parents can try; do not pad with decorative prose",
-          examples: "prefer clearly labeled hypothetical child scenarios and comparisons with the same dominant pattern; use a celebrity only when birth date and time and the exact relevant chart structure are verified, cited, and presented as an analogy rather than proof",
-        },
-      }),
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Report API ${response.status}`);
-        return response.json() as Promise<{ sections?: Array<Partial<FriendlyReportSection>> }>;
-      })
+        daewoonAnalysis: integratedReport.daewoon,
+      },
+      output: {
+        strategyVersion: "strategy_saju_explain.v1",
+        language: "ko",
+        audience: "parents expecting this baby; describe the child's temperament and life tendencies",
+        style: "plain, warm Korean for non-experts; use cautious possibility language; never use internal codes or unexplained terms such as SI, gido, yongshin, gyeokguk or daewoon",
+        title: "10-55 Korean characters; state an observable child trait or useful parenting implication; never use a landscape, natural object, or traditional symbolic image as the title",
+        sections: "return 10 items with id, icon, a chart-specific title, and exactly 2 readable paragraphs totaling 180-700 Korean characters and at least 4 sentences",
+        contentStructure: "for every section connect chart evidence to interpretation, then add a concrete home/school/play simulation, an observable sign, and an action or question parents can try; do not pad with decorative prose",
+        examples: "prefer clearly labeled hypothetical child scenarios and comparisons with the same dominant pattern; use a celebrity only when birth date and time and the exact relevant chart structure are verified, cited, and presented as an analogy rather than proof",
+      },
+    }, controller.signal)
       .then((report) => {
         const generatedSections = report.sections
           ?.filter((section) => typeof section.title === "string" && typeof section.body === "string")
@@ -482,7 +621,7 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
           }));
         if (generatedSections && evaluateFriendlySajuSections(generatedSections, day).accepted) {
           setSections(generatedSections);
-          setSource("gpt-5.5");
+          setSource("ai");
         } else {
           setSource("local");
         }
@@ -497,7 +636,7 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
     <Section title="사주 해석">
       <div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
         <Sparkles className="size-3.5 text-primary" />
-        {source === "gpt-5.5" ? "GPT-5.5 해석" : source === "loading" ? "GPT-5.5 해석 생성 중…" : "기본 해설"}
+        {source === "ai" ? `${SAJU_REPORT_MODEL} 해석` : source === "loading" ? `${SAJU_REPORT_MODEL} 해석 생성 중…` : "기본 해설"}
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-background">
         {sections.map((section, index) => {
@@ -579,7 +718,7 @@ export function LuckyDayDetailDialog({ day, open, onOpenChange }: LuckyDayDetail
           <StarsTable day={day} />
           <Yongshin day={day} />
           <StrengthChart day={day} />
-          <FortuneFlow day={day} />
+          <FortuneFlow day={day} open={open} />
         </div>
       </DialogContent>
     </Dialog>

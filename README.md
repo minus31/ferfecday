@@ -32,10 +32,13 @@
 ### AI 사주 해석 연결
 
 - 사주 해설의 품질 판단, 생성, 테스트, 후속 개선은 [`strategy_saju_explain.md`](./strategy_saju_explain.md)를 기준으로 진행한다.
-- 상세 리포트는 `NEXT_PUBLIC_SAJU_REPORT_API_URL`이 설정되면 해당 보호 API에 사주 데이터를 POST한다.
+- 상세 리포트는 기본적으로 `https://ferfecday.vercel.app/api/saju-report` 보호 API에 사주 데이터를 POST하며, `NEXT_PUBLIC_SAJU_REPORT_API_URL`로 다른 주소를 지정할 수 있다.
+- 대운 선택 해설도 별도 API나 모델을 추가하지 않고 전체 사주 해설과 동일한 `NEXT_PUBLIC_SAJU_REPORT_API_URL`, `gpt-5.5`, `sections` 응답 계약을 사용한다.
+- 대운 요청은 `task: "daewoon_child_fortune"`으로 구분하며, `sections`의 첫 항목 `body`에 1~2문단의 한국어 해설을 반환한다.
 - 요청 모델은 `gpt-5.5`이며 응답은 사용자 친화적인 제목과 본문을 가진 `sections` 배열 8~12개를 반환한다. 권장값은 10개이며 각 항목은 `id`, `icon`, `title`, `body`를 가진다.
-- OpenAI API 키는 정적 앱에 넣지 않는다. Supabase Edge Function 등 서버 측 보호 API에서만 관리한다.
-- URL이 없거나 호출에 실패하면 화면은 내장 기본 해설을 사용한다.
+- OpenAI API 키는 정적 앱에 넣지 않는다. 서버 측 Vercel Function에서만 사용하며, 키가 없는 Vercel 배포에서는 자동 OIDC 인증을 사용한다.
+- 운영 Vercel Function은 자동 제공되는 `VERCEL_OIDC_TOKEN`으로 AI Gateway의 `openai/gpt-5.5`를 호출한다. `OPENAI_API_KEY`가 설정된 환경에서는 OpenAI Responses API를 직접 사용한다.
+- 로컬 오프라인 상태이거나 호출에 실패하면 화면은 계산된 사주 데이터로 만든 기본 해설을 사용한다.
 
 | Layer | 선택 | 비고 |
 | --- | --- | --- |

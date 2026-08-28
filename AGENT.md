@@ -4,7 +4,7 @@
 
 - Name: `BirthdayGift`
 - Purpose: Korean birth-date selection service that recommends auspicious delivery dates based on saju concepts.
-- Current state: Toss mini app compatible static Next.js app. Saju scoring runs in the browser without a backend API route.
+- Current state: Toss mini app compatible static Next.js app. Saju scoring runs in the browser, and AI reports use the independent Vercel Function at `api/saju-report.ts`.
 
 ## Stack
 
