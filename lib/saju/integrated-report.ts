@@ -46,6 +46,18 @@ export interface FriendlyReportEvaluation {
   issues: string[];
 }
 
+export interface SelectionReviewItem {
+  label: string;
+  value: number;
+}
+
+export interface SelectionReview {
+  balance: string;
+  positiveItems: SelectionReviewItem[];
+  negativeItems: SelectionReviewItem[];
+  temperament: string;
+}
+
 const SIPSIN_KO: Record<string, string> = {
   本元: "비견", 比肩: "비견", 劫財: "겁재", 食神: "식신", 傷官: "상관",
   偏財: "편재", 正財: "정재", 偏官: "편관", 正官: "정관", 偏印: "편인", 正印: "정인",
@@ -409,6 +421,32 @@ export function buildBabySummary(day: LuckyDay) {
     `${ROLE_CHILD_TRAIT[dominantRole]}이 특히 돋보이며, ${STRENGTH_CHILD_TONE[day.strength.grade]}`,
     `성장 과정에서 ${ELEMENT_KO[element]}(${({ tree: "木", fire: "火", earth: "土", metal: "金", water: "水" } as const)[element]}) 기운이 상징하는 ${ELEMENT_GROWTH_TONE[element]}을 길러주면 타고난 장점을 더욱 편안하게 펼칠 수 있습니다.`,
   ].join(" "));
+}
+
+/** 결과 카드에서 실제 점수 근거와 아이의 기질을 함께 보여주는 택일 총평. */
+export function buildSelectionReview(day: LuckyDay): SelectionReview {
+  const elementEntries = (Object.entries(day.elementQi.percentages) as Array<
+    [keyof typeof ELEMENT_KO, number]
+  >).sort((a, b) => b[1] - a[1]);
+  const strongest = elementEntries[0];
+  const weakest = elementEntries.at(-1) ?? strongest;
+  const missingDescription = day.elementQi.missing.length === 0
+    ? "다섯 오행이 모두 갖춰져 있습니다"
+    : `${day.elementQi.missing.map((element) => ELEMENT_KO[element]).join(", ")} 기운이 비어 있습니다`;
+  const scoredDetails = day.scoring.details.filter(
+    (detail) => detail.category !== "balance-base" && detail.category !== "reference",
+  );
+  const toItem = (detail: LuckyDay["scoring"]["details"][number]) => ({
+    label: detail.label.replace(/^\d+장\s*/, ""),
+    value: detail.value,
+  });
+
+  return {
+    balance: `아기의 사주는 ${day.strength.gradeLabel}, SI ${day.strength.si.toFixed(4)}입니다. ${missingDescription}. 가장 강한 기운은 ${ELEMENT_KO[strongest[0]]} ${strongest[1].toFixed(1)}%, 가장 약한 기운은 ${ELEMENT_KO[weakest[0]]} ${weakest[1].toFixed(1)}%이며, 오행 편차는 ${day.strength.sigma.toFixed(2)}%입니다. 이를 반영한 대운 평균 기본점수는 ${day.scoring.breakdown.daewoonAverageBaseScore.toFixed(1)}점입니다.`,
+    positiveItems: scoredDetails.filter((detail) => detail.value > 0).map(toItem),
+    negativeItems: scoredDetails.filter((detail) => detail.value < 0).map(toItem),
+    temperament: buildBabySummary(day),
+  };
 }
 
 /** 내부 코드와 작성자 관점 표현을 사용자용 문장으로 정리한다. */

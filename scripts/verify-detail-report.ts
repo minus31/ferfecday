@@ -5,6 +5,7 @@ import {
   buildBabySummary,
   buildFriendlySajuSections,
   buildIntegratedSajuReport,
+  buildSelectionReview,
   evaluateFriendlySajuSections,
   sanitizeSajuExplanation,
 } from "@/lib/saju/integrated-report";
@@ -36,6 +37,24 @@ for (const day of response.results) {
   const babySummary = buildBabySummary(day);
   assert.equal((babySummary.match(/[.!?](?:\s|$)/g) ?? []).length, 3, "아이 기질 요약은 3문장이어야 합니다.");
   assert.match(babySummary, /부모님께서 맞이할 아기/);
+  const review = buildSelectionReview(day);
+  assert.match(review.balance, /SI/);
+  assert.match(review.balance, /대운 평균 기본점수/);
+  assert.equal(review.temperament, babySummary);
+  assert.ok(
+    [...review.positiveItems, ...review.negativeItems].every((item) => !/^\d+장/.test(item.label)),
+    "택일 총평의 가감점 항목에 내부 장 번호가 노출됩니다.",
+  );
+  const breakdown = day.scoring.breakdown;
+  const expectedAdjustments = breakdown.elementBalanceAdjustment
+    + breakdown.sipseongStructure
+    + breakdown.unseongSinsal
+    + breakdown.goodBadStars;
+  assert.ok(Math.abs(expectedAdjustments - breakdown.adjustments) < 0.001);
+  assert.ok(
+    Math.abs(breakdown.daewoonAverageBaseScore + breakdown.adjustments - day.scoring.rawScore) < 0.011,
+    "화면 점수 소계의 합이 원점수와 일치하지 않습니다.",
+  );
   const friendlySections = buildFriendlySajuSections(day);
   friendlyTitleSignatures.add(friendlySections.map((section) => section.title).join("|"));
   assert.equal(friendlySections.length, 10, "화면용 해설은 10개 주제여야 합니다.");

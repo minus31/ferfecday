@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { LuckyDay } from "@/lib/lucky-day-types";
-import { buildBabySummary } from "@/lib/saju/integrated-report";
+import { buildSelectionReview } from "@/lib/saju/integrated-report";
 
 interface LuckyDayCardProps {
   day: LuckyDay;
@@ -17,47 +17,12 @@ interface LuckyDayCardProps {
   onClick?: () => void;
 }
 
-type ContributionKey = "base" | "sipseong" | "unseong" | "stars";
-
-const CONTRIBUTION_META: Record<
-  ContributionKey,
-  { label: string; color: string }
-> = {
-  base: { label: "신강신약 Base", color: "bg-emerald-500" },
-  sipseong: { label: "십성 격국", color: "bg-violet-500" },
-  unseong: { label: "운성·신살", color: "bg-sky-500" },
-  stars: { label: "길흉 가감", color: "bg-amber-500" },
-};
-
-function clampPercent(value: number) {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function getContributions(day: LuckyDay) {
-  const sipseong = day.scoring.details
-    .filter((detail) => detail.label.startsWith("10장"))
-    .reduce((sum, detail) => sum + detail.value, 0);
-  const unseong = day.scoring.details
-    .filter((detail) => detail.label.startsWith("11장"))
-    .reduce((sum, detail) => sum + detail.value, 0);
-  const stars = day.scoring.details
-    .filter((detail) => detail.label.startsWith("12장"))
-    .reduce((sum, detail) => sum + detail.value, 0);
-
-  return {
-    base: clampPercent(day.strength.baseScore),
-    sipseong: clampPercent(80 + sipseong * 5),
-    unseong: clampPercent(80 + unseong * 12),
-    stars: clampPercent(80 + stars * 8),
-  } satisfies Record<ContributionKey, number>;
-}
-
 function formatDateTime(day: LuckyDay) {
   const dateObj = new Date(`${day.date}T00:00:00`);
   const locationLabel = day.location.matched
     ? day.location.label
     : `${day.location.input}(${day.location.label} 기준)`;
-  return `${format(dateObj, "yyyy.MM.dd (EEE)", { locale: ko })} · ${day.timeLabel} · ${locationLabel}`;
+  return `${format(dateObj, "yyyy.MM.dd (EEE)", { locale: ko })}, ${day.timeLabel}, ${locationLabel}`;
 }
 
 function formatCorrectionNotice(day: LuckyDay) {
@@ -82,32 +47,44 @@ function ScoreCircle({ score, muted = false }: { score: number; muted?: boolean 
   );
 }
 
-function ScoreContributionBars({ day }: { day: LuckyDay }) {
-  const contributions = getContributions(day);
+function formatSignedScore(value: number) {
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)}점`;
+}
+
+function ScoreBreakdown({ day }: { day: LuckyDay }) {
+  const breakdown = day.scoring.breakdown;
+  const rows = [
+    {
+      label: "오행의 균형",
+      value: `${(breakdown.daewoonAverageBaseScore + breakdown.elementBalanceAdjustment).toFixed(1)}점`,
+      description: `원국 ${breakdown.originalBaseScore.toFixed(1)}점, 대운 평균 ${breakdown.daewoonAverageBaseScore.toFixed(1)}점, 오행 가감 ${formatSignedScore(breakdown.elementBalanceAdjustment)}`,
+    },
+    { label: "십성, 구조", value: formatSignedScore(breakdown.sipseongStructure) },
+    { label: "12운성, 12신살", value: formatSignedScore(breakdown.unseongSinsal) },
+    { label: "길성, 흉살", value: formatSignedScore(breakdown.goodBadStars) },
+  ];
 
   return (
     <div className="space-y-4 rounded-[1.25rem] border border-border/70 bg-secondary/40 p-4">
-      <p className="text-sm font-medium text-muted-foreground">
-        평가 요소별 밸런스 분석 (Score Contribution)
-      </p>
-      <div className="space-y-3">
-        {(Object.keys(CONTRIBUTION_META) as ContributionKey[]).map((key) => {
-          const meta = CONTRIBUTION_META[key];
-          const value = contributions[key];
-
-          return (
-            <div
-              key={key}
-              className="grid items-center gap-2 text-sm sm:grid-cols-[13rem_minmax(0,1fr)_3rem]"
-            >
-              <p className="font-medium">{meta.label}</p>
-              <div className="h-3 overflow-hidden rounded-full bg-background/90">
-                <div className={cn("h-full", meta.color)} style={{ width: `${value}%` }} />
-              </div>
-              <p className="text-right font-medium text-muted-foreground">{value}%</p>
+      <p className="text-sm font-semibold text-foreground">점수 산출 근거</p>
+      <div className="divide-y divide-border/70 rounded-xl border border-border/70 bg-background/80 px-4">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-4 py-3 text-sm">
+            <div>
+              <p className="font-medium">{row.label}</p>
+              {row.description && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{row.description}</p>
+              )}
             </div>
-          );
-        })}
+            <p className="shrink-0 font-semibold text-primary">{row.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-3 text-sm">
+        <p className="font-semibold">최종 점수</p>
+        <p className="font-bold text-primary">
+          {day.scoring.rawScore.toFixed(1)}점{day.scoring.capped ? `, 상한 적용 ${day.score.toFixed(1)}점` : ""}
+        </p>
       </div>
     </div>
   );
@@ -118,7 +95,7 @@ export function LuckyDayCard({
   featured = false,
   onClick,
 }: LuckyDayCardProps) {
-  const babySummary = buildBabySummary(day);
+  const review = buildSelectionReview(day);
 
   return (
     <Card
@@ -162,16 +139,44 @@ export function LuckyDayCard({
 
         {day.scoring.capped && (
           <p className="-mt-3 text-right text-[11px] text-muted-foreground">
-            원점수 {day.scoring.rawScore.toFixed(2)} · 평가 기준에 따라 100점 상한 적용
+            원점수 {day.scoring.rawScore.toFixed(2)}, 평가 기준에 따라 100점 상한 적용
           </p>
         )}
 
-        <div className="rounded-[1rem] border border-dashed border-primary/25 bg-primary/5 px-4 py-4">
-          <p className="text-xs font-semibold text-primary">아이의 기질 요약</p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{babySummary}</p>
+        <div className="space-y-4 rounded-[1rem] border border-dashed border-primary/25 bg-primary/5 px-4 py-4">
+          <div>
+            <p className="text-xs font-semibold text-primary">택일에 관한 총평</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{review.balance}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold text-emerald-700">가점 항목</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {review.positiveItems.length > 0 ? review.positiveItems.map((item) => (
+                  <span key={`${item.label}-${item.value}`} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-800">
+                    {item.label} +{item.value.toFixed(1)}
+                  </span>
+                )) : <span className="text-xs text-muted-foreground">별도 가점 없음</span>}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-rose-700">감점 항목</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {review.negativeItems.length > 0 ? review.negativeItems.map((item) => (
+                  <span key={`${item.label}-${item.value}`} className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] text-rose-800">
+                    {item.label} {item.value.toFixed(1)}
+                  </span>
+                )) : <span className="text-xs text-muted-foreground">별도 감점 없음</span>}
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-primary/10 pt-3">
+            <p className="text-xs font-semibold text-primary">아이의 기질</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{review.temperament}</p>
+          </div>
         </div>
 
-        {featured && <ScoreContributionBars day={day} />}
+        {featured && <ScoreBreakdown day={day} />}
 
         <div className="flex justify-end border-t border-border/70 pt-4">
           <Button onClick={onClick} size="sm" className="min-w-36">

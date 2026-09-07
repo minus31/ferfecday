@@ -15,10 +15,11 @@ import {
 import type { StrengthIndexResult } from "@/lib/saju/strength-index";
 
 export interface YongshinCandidate {
-  stem: string;
+  char: string;
   element: ElementQiKey;
   value: number;
-  source: "stem" | "hidden-stem" | "fallback-heesin";
+  source: "stem" | "branch" | "hidden-stem" | "fallback-heesin";
+  origin: "stem" | "branch" | "hidden-stem";
   position?: "year" | "month" | "day" | "time";
   branch?: string;
 }
@@ -61,17 +62,17 @@ const BRANCH_KO: Record<string, string> = {
 };
 
 const POSITION_PRIORITY: Record<string, number> = {
-  "hidden-stem:month": 0,
-  "hidden-stem:day": 1,
-  "hidden-stem:time": 2,
+  "branch:month": 0,
+  "branch:day": 1,
+  "branch:time": 2,
   "stem:month": 3,
   "stem:time": 4,
   "stem:year": 5,
-  "hidden-stem:year": 6,
-  "fallback-heesin:month": 7,
-  "fallback-heesin:day": 8,
-  "fallback-heesin:time": 9,
-  "fallback-heesin:year": 10,
+  "branch:year": 6,
+  "hidden-stem:month": 7,
+  "hidden-stem:day": 8,
+  "hidden-stem:time": 9,
+  "hidden-stem:year": 10,
 };
 
 function getGeneratingElement(element: ElementQiKey) {
@@ -80,6 +81,29 @@ function getGeneratingElement(element: ElementQiKey) {
 
 function getRoleCandidateRoles(si: number): ElementRole[] {
   return si >= 0 ? ["siksang", "jaeseong", "gwanseong"] : ["insung", "bigeop"];
+}
+
+function selectEokbuRole(strength: StrengthIndexResult) {
+  let candidateRoles = getRoleCandidateRoles(strength.si);
+
+  if (strength.si >= 0) {
+    if (strength.roleQi.insung.percentage > strength.roleQi.bigeop.percentage) {
+      candidateRoles = candidateRoles.filter((role) => role !== "gwanseong");
+    }
+  } else {
+    const excessiveDrainRole = (["siksang", "jaeseong", "gwanseong"] as const)
+      .map((role) => strength.roleQi[role])
+      .sort((a, b) => b.percentage - a.percentage)[0];
+
+    if (excessiveDrainRole.percentage >= 30) {
+      const preferredRole = excessiveDrainRole.role === "jaeseong" ? "bigeop" : "insung";
+      if (strength.roleQi[preferredRole].percentage > 0) return strength.roleQi[preferredRole];
+    }
+  }
+
+  return candidateRoles
+    .map((role) => strength.roleQi[role])
+    .sort((a, b) => b.percentage - a.percentage)[0];
 }
 
 function detectJohu(elementQi: ElementQiResult) {
@@ -101,7 +125,10 @@ function detectJohu(elementQi: ElementQiResult) {
   if (fire > 0 && water > 0) {
     const stronger = Math.max(fire, water);
     const weaker = Math.min(fire, water);
-    if (stronger >= 20 && weaker / stronger <= 1 / 3) {
+    if (
+      stronger >= 20 &&
+      (weaker / stronger <= 1 / 3 || stronger - weaker >= 20)
+    ) {
       const dominantElement = fire > water ? "fire" : "water";
       return {
         collapsed: true,
@@ -119,40 +146,119 @@ function detectJohu(elementQi: ElementQiResult) {
 }
 
 function getPriority(candidate: YongshinCandidate) {
-  return POSITION_PRIORITY[`${candidate.source}:${candidate.position}`] ?? 99;
+  return POSITION_PRIORITY[`${candidate.origin}:${candidate.position}`] ?? 99;
 }
 
-function isYangStem(stem: string) {
-  return STEM_INFO[stem]?.yinyang === "+";
+function isYangStem(char: string) {
+  return STEM_INFO[char]?.yinyang === "+";
 }
 
 function sortCandidates(a: YongshinCandidate, b: YongshinCandidate) {
   if (b.value !== a.value) return b.value - a.value;
   const priorityDiff = getPriority(a) - getPriority(b);
   if (priorityDiff !== 0) return priorityDiff;
-  if (isYangStem(a.stem) !== isYangStem(b.stem)) return isYangStem(a.stem) ? -1 : 1;
-  return a.stem.localeCompare(b.stem);
+  if (isYangStem(a.char) !== isYangStem(b.char)) return isYangStem(a.char) ? -1 : 1;
+  return a.char.localeCompare(b.char);
 }
 
-function getCandidates(
+function getPillars(result: SajuResult) {
+  return [
+    { position: "year" as const, detail: result.pillars[3] },
+    { position: "month" as const, detail: result.pillars[2] },
+    { position: "day" as const, detail: result.pillars[1] },
+    { position: "time" as const, detail: result.pillars[0] },
+  ];
+}
+
+function getSurfaceCandidates(
+  result: SajuResult,
   breakdown: ElementQiBreakdown[],
   element: ElementQiKey,
-  source: YongshinCandidate["source"] = "stem"
+): YongshinCandidate[] {
+  const candidates: YongshinCandidate[] = [];
+
+  for (const { position, detail } of getPillars(result)) {
+    const stem = detail.pillar.stem;
+    const branch = detail.pillar.branch;
+
+    if (position !== "day" && getElement(stem) === element) {
+      const stemBreakdown = breakdown.find(
+        (item) => item.source === "stem" && item.position === position && item.stem === stem,
+      );
+      candidates.push({
+        char: stem,
+        element,
+        value: stemBreakdown?.value ?? 0,
+        source: "stem",
+        origin: "stem",
+        position,
+        branch,
+      });
+    }
+
+    if (branchHasElement(branch, element)) {
+      const value = breakdown
+        .filter(
+          (item) =>
+            item.source === "hidden-stem" &&
+            item.position === position &&
+            item.branch === branch &&
+            item.element === element,
+        )
+        .reduce((sum, item) => sum + item.value, 0);
+      candidates.push({
+        char: branch,
+        element,
+        value,
+        source: "branch",
+        origin: "branch",
+        position,
+        branch,
+      });
+    }
+  }
+
+  return candidates.sort(sortCandidates);
+}
+
+function getHiddenStemCandidates(
+  breakdown: ElementQiBreakdown[],
+  element: ElementQiKey,
 ): YongshinCandidate[] {
   return breakdown
     .filter((item) => {
       if (!item.stem || item.element !== element) return false;
-      return item.source === "stem" || item.source === "hidden-stem";
+      return item.source === "hidden-stem";
     })
     .map((item) => ({
-      stem: item.stem as string,
+      char: item.stem as string,
       element,
       value: item.value,
-      source: (source === "fallback-heesin" ? "fallback-heesin" : item.source) as YongshinCandidate["source"],
+      source: "hidden-stem" as const,
+      origin: "hidden-stem" as const,
       position: item.position,
       branch: item.branch,
     }))
     .sort(sortCandidates);
+}
+
+function getCandidates(
+  result: SajuResult,
+  breakdown: ElementQiBreakdown[],
+  element: ElementQiKey,
+  fallback = false,
+) {
+  const surface = getSurfaceCandidates(result, breakdown, element);
+  const selected = surface.length > 0 ? surface : getHiddenStemCandidates(breakdown, element);
+
+  return selected.map((candidate) => ({
+    ...candidate,
+    source: fallback ? "fallback-heesin" as const : candidate.source,
+  }));
+}
+
+function formatRepresentativeChar(char: string) {
+  return `${STEM_KO[char] ?? BRANCH_KO[char] ?? char}(${char})`;
 }
 
 export function calculateYongshin(
@@ -174,22 +280,19 @@ export function calculateYongshin(
     role = "johu-control";
     element = "fire";
   } else {
-    const candidateRoles = getRoleCandidateRoles(strength.si);
-    const selected = candidateRoles
-      .map((candidateRole) => strength.roleQi[candidateRole])
-      .sort((a, b) => b.percentage - a.percentage)[0];
+    const selected = selectEokbuRole(strength);
     role = selected.role;
     element = selected.element;
   }
 
   let fallbackElement: ElementQiKey | null = null;
   let representativeSource: YongshinResult["representativeSource"] = "daewoon-needed";
-  let candidates = getCandidates(elementQi.breakdown, element);
+  let candidates = getCandidates(result, elementQi.breakdown, element);
 
   if (candidates.length === 0) {
     fallbackElement = getGeneratingElement(element);
     candidates = fallbackElement
-      ? getCandidates(elementQi.breakdown, fallbackElement, "fallback-heesin")
+      ? getCandidates(result, elementQi.breakdown, fallbackElement, true)
       : [];
   }
 
@@ -201,9 +304,9 @@ export function calculateYongshin(
 
   let message: string;
   if (representative?.source === "fallback-heesin" && fallbackElement) {
-    message = `원국에 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]}) 용신 글자가 없어, 이를 생하는 ${ELEMENT_KO[fallbackElement]}(${ELEMENT_HANJA[fallbackElement]}) 희신의 ${STEM_KO[representative.stem]}(${representative.stem})을 보완 기준으로 삼습니다.`;
+    message = `원국에 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]}) 용신 글자가 없어, 이를 생하는 ${ELEMENT_KO[fallbackElement]}(${ELEMENT_HANJA[fallbackElement]}) 희신의 ${formatRepresentativeChar(representative.char)}을 보완 기준으로 삼습니다.`;
   } else if (representative) {
-    message = `${method === "johu" ? "조후" : "억부"} 기준 용신은 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]})이며 대표 글자는 ${STEM_KO[representative.stem]}(${representative.stem})입니다.`;
+    message = `${method === "johu" ? "조후" : "억부"} 기준 용신은 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]})이며 대표 글자는 ${formatRepresentativeChar(representative.char)}입니다.`;
   } else if (firstYongshinDaewoon) {
     message = `원국에 ${ELEMENT_KO[element]}(${ELEMENT_HANJA[element]}) 용신과 이를 돕는 희신 글자가 뚜렷하지 않지만, 아이의 ${firstYongshinDaewoon.age}세 대운 ${[...firstYongshinDaewoon.ganzi].map((char) => STEM_KO[char] ?? BRANCH_KO[char] ?? char).join("")}(${firstYongshinDaewoon.ganzi})부터 보완 기운이 들어옵니다.`;
   } else {
@@ -218,7 +321,7 @@ export function calculateYongshin(
     role,
     element,
     elementLabel: ELEMENT_HANJA[element],
-    representativeChar: representative?.stem ?? null,
+    representativeChar: representative?.char ?? null,
     representativeSource,
     candidates,
     fallbackElement,

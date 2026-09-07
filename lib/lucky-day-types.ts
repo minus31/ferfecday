@@ -41,6 +41,13 @@ export interface LuckyRelationPair {
 }
 
 export interface LuckyScoreDetail {
+  category:
+    | "balance-base"
+    | "element-balance"
+    | "sipseong-structure"
+    | "unseong-sinsal"
+    | "good-bad-stars"
+    | "reference";
   label: string;
   value: number;
   description: string;
@@ -88,10 +95,11 @@ export interface LuckyStrengthIndex {
 }
 
 export interface LuckyYongshinCandidate {
-  stem: string;
+  char: string;
   element: LuckyElementKey;
   value: number;
-  source: "stem" | "hidden-stem" | "fallback-heesin";
+  source: "stem" | "branch" | "hidden-stem" | "fallback-heesin";
+  origin: "stem" | "branch" | "hidden-stem";
   position?: "year" | "month" | "day" | "time";
   branch?: string;
 }
@@ -105,7 +113,7 @@ export interface LuckyYongshin {
   element: LuckyElementKey;
   elementLabel: string;
   representativeChar: string | null;
-  representativeSource: "stem" | "hidden-stem" | "fallback-heesin" | "daewoon-needed";
+  representativeSource: "stem" | "branch" | "hidden-stem" | "fallback-heesin" | "daewoon-needed";
   candidates: LuckyYongshinCandidate[];
   fallbackElement: LuckyElementKey | null;
   message: string;
@@ -170,6 +178,15 @@ export interface LuckyDay {
   scoring: {
     rawScore: number;
     capped: boolean;
+    breakdown: {
+      originalBaseScore: number;
+      daewoonAverageBaseScore: number;
+      elementBalanceAdjustment: number;
+      sipseongStructure: number;
+      unseongSinsal: number;
+      goodBadStars: number;
+      adjustments: number;
+    };
     details: LuckyScoreDetail[];
     daewoonScores: Array<{
       index: number;

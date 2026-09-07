@@ -15,6 +15,8 @@ import type { LuckyDay } from "@/lib/lucky-day-types";
 import { getBirthLocation, parseBirthGender } from "@/lib/birth-options";
 import { calculateLuckyDays } from "@/lib/lucky-days";
 
+const DETAIL_HISTORY_KEY = "birthdayGiftDetail";
+
 function formatDateLabel(date: string) {
   return format(new Date(`${date}T00:00:00`), "yyyy.MM.dd", { locale: ko });
 }
@@ -33,6 +35,23 @@ function ResultsContent() {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const detailHistoryActive = React.useRef(false);
+
+  const closeDialog = React.useCallback(() => {
+    setDialogOpen(false);
+    setSelected(null);
+  }, []);
+
+  React.useEffect(() => {
+    const handlePopState = () => {
+      if (!detailHistoryActive.current) return;
+      detailHistoryActive.current = false;
+      closeDialog();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [closeDialog]);
 
   React.useEffect(() => {
     async function loadLuckyDays() {
@@ -75,8 +94,27 @@ function ResultsContent() {
     : `${locationInput || location.label}(${location.label} 기준)`;
 
   const handleSelect = (day: LuckyDay) => {
+    if (!detailHistoryActive.current) {
+      const currentState = window.history.state;
+      const state = currentState && typeof currentState === "object" ? currentState : {};
+      window.history.pushState({ ...state, [DETAIL_HISTORY_KEY]: day.id }, "");
+      detailHistoryActive.current = true;
+    }
     setSelected(day);
     setDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+
+    closeDialog();
+    if (detailHistoryActive.current) {
+      detailHistoryActive.current = false;
+      window.history.back();
+    }
   };
 
   return (
@@ -164,7 +202,7 @@ function ResultsContent() {
       <LuckyDayDetailDialog
         day={selected}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogOpenChange}
       />
     </>
   );

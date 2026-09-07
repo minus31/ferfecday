@@ -175,6 +175,7 @@ function scoreSaju(result: SajuResult) {
   const details: LuckyScoreDetail[] = [
     ...baseScoring.details,
     {
+      category: "reference",
       label: "7장 오행 기도",
       value: 0,
       description: `목화토금수 기도 ${elementQiValues
@@ -182,6 +183,7 @@ function scoreSaju(result: SajuResult) {
         .join("/")}, 결핍 ${missingElements}개`,
     },
     {
+      category: "reference",
       label: "9장 용신",
       value: 0,
       description: yongshin.message,
@@ -191,6 +193,7 @@ function scoreSaju(result: SajuResult) {
   return {
     score: baseScoring.score,
     rawScore: baseScoring.rawScore,
+    breakdown: baseScoring.breakdown,
     details,
     daewoonBaseScores: baseScoring.daewoonBaseScores,
     elementQi: {
@@ -293,6 +296,7 @@ function serializeCandidate(
     scoring: {
       rawScore: scoring.rawScore,
       capped: scoring.rawScore > 100,
+      breakdown: scoring.breakdown,
       details: scoring.details,
       daewoonScores: scoring.daewoonBaseScores,
     },

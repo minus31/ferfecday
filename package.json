@@ -17,6 +17,7 @@
     "verify:detail-report": "tsx scripts/verify-detail-report.ts",
     "verify:saju-api": "tsx scripts/verify-saju-api.ts",
     "verify:strength-score": "tsx scripts/verify-strength-score.ts",
+    "verify:yongshin": "tsx scripts/verify-yongshin.ts",
     "start": "next start",
     "lint": "next lint",
     "deploy": "ait deploy"
