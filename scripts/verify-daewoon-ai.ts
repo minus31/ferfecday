@@ -4,6 +4,7 @@ import { calculateLuckyDays } from "@/lib/lucky-days";
 import {
   buildDaewoonNarrativeRequest,
   buildLocalDaewoonNarrative,
+  getDaewoonLifeStage,
   getDaewoonPeriod,
   parseDaewoonNarrative,
 } from "@/lib/saju/daewoon-ai";
@@ -34,16 +35,28 @@ assert.equal(request.task, "daewoon_child_fortune");
 assert.equal(request.report.selectedPeriod.daewoon.index, selected.index);
 assert.deepEqual(request.report.selectedPeriod.yearRange, period.yearRange);
 assert.equal(request.report.selectedPeriod.annualFortunes.length, period.annualFortunes.length);
+assert.equal(request.report.selectedPeriod.lifeStage.key, getDaewoonLifeStage(period.ageRange).key);
 
 const localNarrative = buildLocalDaewoonNarrative(day, selected.index);
 assert.ok(localNarrative);
 assert.equal(localNarrative.paragraphs.length, 2);
-assert.ok(localNarrative.content.length >= 180);
+assert.ok(localNarrative.content.length >= 240);
 for (const daewoon of day.daewoon) {
+  const currentPeriod = getDaewoonPeriod(day, daewoon.index);
   const fallback = buildLocalDaewoonNarrative(day, daewoon.index);
+  assert.ok(currentPeriod);
   assert.ok(fallback, `${daewoon.index}번 성장 흐름의 기본 해설이 없습니다.`);
   assert.equal(fallback.paragraphs.length, 2);
-  assert.ok(fallback.content.length >= 180);
+  assert.ok(fallback.content.length >= 240);
+  assert.ok(fallback.content.length <= 650);
+  assert.match(fallback.content, new RegExp(`${currentPeriod.daewoon.ganziHangul}\\(${currentPeriod.daewoon.ganzi}\\)`));
+  assert.match(fallback.content, new RegExp(String(currentPeriod.annualFortunes[0].year)));
+  assert.match(fallback.content, new RegExp(String(currentPeriod.annualFortunes.at(-1)?.year)));
+  const sentenceCount = (fallback.content.match(/[.!?](?:\s|$)/g) ?? []).length;
+  assert.ok(sentenceCount >= 5 && sentenceCount <= 8);
+  if (getDaewoonLifeStage(currentPeriod.ageRange).key !== "childhood") {
+    assert.doesNotMatch(fallback.content, /아이|아기|양육|훈육|어린이집|놀이터/);
+  }
 }
 
 const validContent = [
@@ -67,6 +80,15 @@ const sanitized = parseDaewoonNarrative({
 assert.ok(sanitized);
 assert.doesNotMatch(sanitized.content, /대운/);
 assert.match(sanitized.content, /10년 단위 성장 흐름/);
+
+const adultContent = validContent
+  .replaceAll("아이", "성인 자녀")
+  .replaceAll("부모", "가족")
+  .replace("학교와 가정에서는", "직장과 일상에서는");
+const parsedAdult = parseDaewoonNarrative({ content: adultContent }, [35, 44]);
+assert.ok(parsedAdult);
+assert.doesNotMatch(parsedAdult.content, /아이|아기|양육|훈육|어린이집|놀이터/);
+assert.equal(getDaewoonLifeStage([35, 44]).subject, "성인 자녀");
 
 assert.equal(parseDaewoonNarrative({ content: "짧은 해설입니다." }), null);
 assert.equal(parseDaewoonNarrative({ unexpected: validContent }), null);

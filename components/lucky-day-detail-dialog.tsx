@@ -4,10 +4,12 @@ import * as React from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import {
+  Activity,
   Brain,
   ChevronDown,
   Compass,
   Heart,
+  HandHeart,
   House,
   LoaderCircle,
   MessageCircle,
@@ -111,7 +113,9 @@ const FRIENDLY_SECTION_ICON: Record<FriendlySectionIcon, LucideIcon> = {
   brain: Brain,
   message: MessageCircle,
   users: Users,
+  "hand-heart": HandHeart,
   shield: ShieldCheck,
+  activity: Activity,
   compass: Compass,
   wallet: WalletCards,
   home: House,
@@ -440,7 +444,7 @@ function DaewoonNarrativeCard({
     setState({ status: "loading" });
     requestSajuReport<unknown>(request, controller.signal)
       .then((payload) => {
-        const narrative = parseDaewoonNarrative(payload);
+        const narrative = parseDaewoonNarrative(payload, period.ageRange);
         if (!narrative) throw new Error("Invalid daewoon narrative response");
         cacheRef.current.set(cacheKey, narrative);
         setState({ status: "ready", narrative, source: "ai" });
@@ -465,16 +469,16 @@ function DaewoonNarrativeCard({
           <Sparkles className="size-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-primary">AI 성장 흐름</p>
+          <p className="text-xs font-semibold text-primary">시기별 맞춤 해설</p>
           <h5 className="mt-1 text-sm font-bold leading-6 sm:text-base">
-            {period.ageRange[0]}~{period.ageRange[1]}세 아이의 운세와 마음 변화
+            {period.ageRange[0]}~{period.ageRange[1]}세의 운세와 삶의 변화
           </h5>
         </div>
       </div>
 
       {state.status === "prompt" && (
         <p className="mt-4 text-sm leading-7 text-foreground/75">
-          위 대운을 선택하면 이 시기에 나타날 수 있는 아이의 마음 변화와 부모가 살펴볼 신호를 AI가 정리해 드려요.
+          위 흐름을 선택하면 해당 연령의 삶에서 두드러질 주제와 활용 방법을 자세히 보여드려요.
         </p>
       )}
       {state.status === "loading" && (
@@ -490,14 +494,14 @@ function DaewoonNarrativeCard({
           </div>
           {state.source === "local" && (
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              AI 연결이 원활하지 않아 계산된 사주 흐름을 바탕으로 한 기본 해설을 보여드렸어요.
+              연결이 원활하지 않아 계산된 사주 흐름을 바탕으로 한 기본 해설을 보여드렸어요.
             </p>
           )}
         </>
       )}
       {state.status === "error" && (
         <div className="mt-4 flex flex-col items-start gap-3">
-          <p className="text-sm leading-7 text-muted-foreground">AI 해설을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
+          <p className="text-sm leading-7 text-muted-foreground">맞춤 해설을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
           <button
             type="button"
             onClick={() => setRetryCount((count) => count + 1)}
@@ -579,6 +583,14 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
       model: SAJU_REPORT_MODEL,
       task: "full_saju_report",
       report: {
+        selection: {
+          date: day.date,
+          time: day.timeLabel,
+          rank: day.rank,
+          score: day.score,
+          scoreBreakdown: day.scoring.breakdown,
+          purpose: "출산 예정 기간 안에서 이 날짜를 선택했을 때 태어날 아이의 사주상 가능성을 설명",
+        },
         pillars: day.pillars,
         dayPillar: day.dayPillar,
         dayPillarProfile,
@@ -596,15 +608,23 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
           ],
         },
         daewoonAnalysis: integratedReport.daewoon,
+        relations: day.relations,
+        specialSals: day.specialSals,
+        gongmang: day.gongmang,
+        scoringDetails: day.scoring.details,
       },
       output: {
-        strategyVersion: "strategy_saju_explain.v1",
+        strategyVersion: "strategy_saju_explain.v3",
         language: "ko",
-        audience: "parents expecting this baby; describe the child's temperament and life tendencies",
-        style: "plain, warm Korean for non-experts; use cautious possibility language; never use internal codes or unexplained terms such as SI, gido, yongshin, gyeokguk or daewoon",
+        audience: "parents comparing birth-date candidates for an expected baby; explain what choosing this date may mean",
+        voice: "speak as the finished service directly to parents; never refer to a profile, supplied data, calculation process, report, or AI author",
+        style: "plain, warm and specific Korean; use cautious possibility language; translate useful saju evidence into everyday meaning and never expose internal codes",
         title: "10-55 Korean characters; state an observable child trait or useful parenting implication; never use a landscape, natural object, or traditional symbolic image as the title",
-        sections: "return 10 items with id, icon, a chart-specific title, and exactly 2 readable paragraphs totaling 180-700 Korean characters and at least 4 sentences",
-        contentStructure: "for every section connect chart evidence to interpretation, then add a concrete home/school/play simulation, an observable sign, and an action or question parents can try; do not pad with decorative prose",
+        sections: "return the prescribed 12 ids and icons in order, with exactly 2 readable paragraphs totaling 240-650 Korean characters and 5-8 sentences each",
+        contentStructure: "use at least two distinct chart facts per section, explain their causal meaning, then add an age-appropriate concrete scenario, observable sign, and action or question; do not repeat advice or pad with decorative prose",
+        ageRule: "career and money must distinguish childhood clues from adult use; adult-relationships must describe adult intimacy and relationship skills; life-flow must call people age 19+ an adult child/adult/middle-aged adult, never a baby or child being parented",
+        wellbeingSafety: "translate element balance only into activity, rest, sleep, and recovery routines; never infer organs, diseases, or constitution, and state that medical judgment comes first",
+        partnershipSafety: "never predict a spouse's appearance, occupation, status, gender role, meeting route, marriage timing, or marriage outcome",
         examples: "prefer clearly labeled hypothetical child scenarios and comparisons with the same dominant pattern; use a celebrity only when birth date and time and the exact relevant chart structure are verified, cited, and presented as an analogy rather than proof",
       },
     }, controller.signal)
@@ -612,7 +632,7 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
         const generatedSections = report.sections
           ?.filter((section) => typeof section.title === "string" && typeof section.body === "string")
           .map((section, index) => ({
-            id: `${section.id || "section"}-${index + 1}`,
+            id: typeof section.id === "string" ? section.id : "",
             icon: typeof section.icon === "string" && Object.hasOwn(FRIENDLY_SECTION_ICON, section.icon)
               ? section.icon as FriendlySectionIcon
               : localSections[index]?.icon ?? "sparkles",
@@ -636,7 +656,7 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
     <Section title="사주 해석">
       <div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
         <Sparkles className="size-3.5 text-primary" />
-        {source === "ai" ? `${SAJU_REPORT_MODEL} 해석` : source === "loading" ? `${SAJU_REPORT_MODEL} 해석 생성 중…` : "기본 해설"}
+        {source === "loading" ? "선택한 날짜의 해설을 정리하고 있어요…" : "선택한 날짜에 맞춘 사주 해설"}
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-background">
         {sections.map((section, index) => {
@@ -666,16 +686,6 @@ function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
                   <div className="space-y-3 text-sm leading-7 text-foreground/80 sm:text-[15px]">
                     {section.body.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
                   </div>
-                  {index === 0 && dayPillarProfile && (
-                    <a
-                      href={dayPillarProfile.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-4 inline-flex text-xs font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      참고 자료 보기
-                    </a>
-                  )}
                 </div>
               )}
             </article>

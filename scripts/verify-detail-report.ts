@@ -19,6 +19,10 @@ assert.equal(
   sanitizeSajuExplanation("힘이 나는 활동입니다. 나는 배우고 싶습니다."),
   "힘이 나는 활동입니다. 아이는 배우고 싶습니다.",
 );
+assert.equal(
+  sanitizeSajuExplanation("30대에는 성인이 된 자녀가 선택을 주도합니다."),
+  "30대에는 성인이 된 자녀가 선택을 주도합니다.",
+);
 
 const response = calculateLuckyDays({
   from: "2026-08-20",
@@ -57,17 +61,31 @@ for (const day of response.results) {
   );
   const friendlySections = buildFriendlySajuSections(day);
   friendlyTitleSignatures.add(friendlySections.map((section) => section.title).join("|"));
-  assert.equal(friendlySections.length, 10, "화면용 해설은 10개 주제여야 합니다.");
-  assert.equal(new Set(friendlySections.map((section) => section.id)).size, 10, "해설 주제 ID가 중복됩니다.");
+  assert.equal(friendlySections.length, 12, "화면용 해설은 12개 주제여야 합니다.");
+  assert.equal(new Set(friendlySections.map((section) => section.id)).size, 12, "해설 주제 ID가 중복됩니다.");
   const friendlyEvaluation = evaluateFriendlySajuSections(friendlySections, day);
   assert.equal(friendlyEvaluation.accepted, true, friendlyEvaluation.issues.join("\n"));
   const friendlyText = friendlySections.map((section) => `${section.title}\n${section.body}`).join("\n");
+  assert.match(friendlySections[0].body, /이 날짜를 선택한다면/);
+  assert.match(friendlySections[0].body, /일간/);
+  assert.match(friendlySections[0].body, /월지/);
+  assert.match(friendlySections[0].body, /두 성향이 만나면/);
+  const adultRelationship = friendlySections.find((section) => section.id === "adult-relationships");
+  const wellbeing = friendlySections.find((section) => section.id === "wellbeing");
+  assert.ok(adultRelationship);
+  assert.match(adultRelationship.body, /성인/);
+  assert.doesNotMatch(adultRelationship.body, /배우자(?:의)? (?:외모|직업|신분)|결혼.{0,12}(?:\d{4}년|나이|반드시)/);
+  assert.ok(wellbeing);
+  assert.match(wellbeing.body, /의료 전문가의 판단을 우선/);
+  assert.doesNotMatch(wellbeing.body, /폐|기관지|대장|신장|방광|심장|혈관|생식기|천식|비염|당뇨|고혈압/);
+  assert.doesNotMatch(friendlyText, /프로필에서는|자료에서는|AI(?:가|는|의)|보고서에서는|해설에서는/);
   assert.doesNotMatch(
     friendlyText,
     /\bSI\b|기도|용신|희신|일주론|격국|대운|십성|신강|신약|원국|생조|극설|TR_DW|GYEOK|SIPSEONG/i,
     "일반인용 해설에 전문·내부 용어가 남아 있습니다.",
   );
-  assert.ok(friendlySections.every((section) => section.title.length >= 10 && section.body.length >= 180));
+  assert.ok(friendlySections.every((section) => section.title.length >= 10 && section.body.length >= 240));
+  assert.ok(friendlySections.every((section) => section.body.length <= 650), "모바일에서 읽기에는 해설 본문이 너무 깁니다.");
   assert.ok(friendlySections.every((section) => section.title.length <= 55), "모바일에서 읽기에는 해설 제목이 너무 깁니다.");
 
   const report = buildIntegratedSajuReport(day);
@@ -173,6 +191,28 @@ const rejectedShortMetaphor = evaluateFriendlySajuSections([
 ], templateDay);
 assert.equal(rejectedShortMetaphor.accepted, false, "추상적인 물상 제목과 짧은 본문을 거부해야 합니다.");
 assert.ok(rejectedShortMetaphor.issues.some((issue) => issue.includes("자연물 비유")));
-assert.ok(rejectedShortMetaphor.issues.some((issue) => issue.includes("180~700자")));
+assert.ok(rejectedShortMetaphor.issues.some((issue) => issue.includes("240~650자")));
+
+const rejectedProviderMeta = evaluateFriendlySajuSections(buildFriendlySajuSections(templateDay).map(
+  (section, index) => index === 0 ? { ...section, body: section.body.replace("이 날짜를 선택한다면", "프로필에서는") } : section,
+), templateDay);
+assert.equal(rejectedProviderMeta.accepted, false, "제작 과정 관점의 메타 표현을 거부해야 합니다.");
+assert.ok(rejectedProviderMeta.issues.some((issue) => issue.includes("메타 표현")));
+
+const rejectedHealthPrediction = evaluateFriendlySajuSections(buildFriendlySajuSections(templateDay).map(
+  (section) => section.id === "wellbeing"
+    ? { ...section, body: section.body.replace("활동과 회복의 리듬", "폐와 기관지의 취약성") }
+    : section,
+), templateDay);
+assert.equal(rejectedHealthPrediction.accepted, false, "사주로 특정 장기 취약성을 예측한 해설을 거부해야 합니다.");
+assert.ok(rejectedHealthPrediction.issues.some((issue) => issue.includes("장기나 질환")));
+
+const rejectedPartnerPrediction = evaluateFriendlySajuSections(buildFriendlySajuSections(templateDay).map(
+  (section) => section.id === "adult-relationships"
+    ? { ...section, body: section.body.replace("상대의 모습", "배우자의 외모") }
+    : section,
+), templateDay);
+assert.equal(rejectedPartnerPrediction.accepted, false, "배우자의 외모를 예언한 해설을 거부해야 합니다.");
+assert.ok(rejectedPartnerPrediction.issues.some((issue) => issue.includes("배우자 모습")));
 
 console.log("detail-report verification: ok");

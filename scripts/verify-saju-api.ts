@@ -1,10 +1,26 @@
 import assert from "node:assert/strict";
 
 import sajuReportApi, {
+  DAEWOON_INSTRUCTIONS,
+  FULL_REPORT_INSTRUCTIONS,
   extractResponseJson,
   isAllowedOrigin,
   resolveAIProvider,
 } from "@/api/saju-report";
+
+assert.match(FULL_REPORT_INSTRUCTIONS, /이 날짜를 선택한다면/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /프로필에서는/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /19세 이후/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /240~650자/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /월지의 계절 환경/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /1순위와 2순위 성향의 상호작용/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /정확히 12개의 생활형 해설/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /adult-relationships\/hand-heart/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /wellbeing\/activity/);
+assert.match(FULL_REPORT_INSTRUCTIONS, /특정 장기, 질환, 체질의 취약성/);
+assert.match(DAEWOON_INSTRUCTIONS, /selectedPeriod\.lifeStage/);
+assert.match(DAEWOON_INSTRUCTIONS, /19세 이후/);
+assert.match(DAEWOON_INSTRUCTIONS, /천간, 지지 성향의 쉬운 뜻/);
 
 assert.equal(isAllowedOrigin("http://localhost:3000"), true);
 assert.equal(isAllowedOrigin("https://ferfecday.vercel.app"), true);
