@@ -1,226 +1,157 @@
 "use client";
-
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
-import { ArrowLeft, Sparkles } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+import { useAccount } from "@/components/account-provider";
 import { LuckyDayCard } from "@/components/lucky-day-card";
 import { LuckyDayDetailDialog } from "@/components/lucky-day-detail-dialog";
+import { serviceRequest } from "@/lib/supabase-browser";
 import type { LuckyDay } from "@/lib/lucky-day-types";
-import { getBirthLocation, parseBirthGender } from "@/lib/birth-options";
-import { calculateLuckyDays } from "@/lib/lucky-days";
-
-const DETAIL_HISTORY_KEY = "birthdayGiftDetail";
-
-function formatDateLabel(date: string) {
-  return format(new Date(`${date}T00:00:00`), "yyyy.MM.dd", { locale: ko });
-}
-
+import type { SearchView } from "@/lib/product";
 function ResultsContent() {
-  const params = useSearchParams();
-  const from = params.get("from");
-  const to = params.get("to");
-  const gender = parseBirthGender(params.get("gender"));
-  const locationInput = params.get("location") ?? "";
-  const location = getBirthLocation(locationInput);
-
-  const [days, setDays] = React.useState<LuckyDay[]>([]);
-  const [candidateCount, setCandidateCount] = React.useState(0);
+  const params = useSearchParams(),
+    searchId = params.get("search");
+  const { session, ready, error: authError } = useAccount();
+  const [search, setSearch] = React.useState<SearchView | null>(null);
   const [selected, setSelected] = React.useState<LuckyDay | null>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const detailHistoryActive = React.useRef(false);
-
-  const closeDialog = React.useCallback(() => {
-    setDialogOpen(false);
-    setSelected(null);
-  }, []);
-
+  const [error, setError] = React.useState("");
+  const detailHistory = React.useRef(false);
   React.useEffect(() => {
-    const handlePopState = () => {
-      if (!detailHistoryActive.current) return;
-      detailHistoryActive.current = false;
-      closeDialog();
+    const close = () => {
+      detailHistory.current = false;
+      setSelected(null);
     };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [closeDialog]);
-
+    window.addEventListener("popstate", close);
+    return () => window.removeEventListener("popstate", close);
+  }, []);
   React.useEffect(() => {
-    async function loadLuckyDays() {
-      if (!from || !to) {
-        setError("날짜 범위를 다시 선택해주세요.");
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        await new Promise((resolve) => {
-          window.setTimeout(resolve, 0);
-        });
-        const data = calculateLuckyDays({
-          from,
-          to,
-          gender,
-          location: locationInput || location.label,
-        });
-        setDays(data.results);
-        setCandidateCount(data.candidates);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "길일 계산에 실패했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadLuckyDays();
-  }, [from, to, gender, location.id, location.label, locationInput]);
-
-  const rangeLabel =
-    from && to ? `${formatDateLabel(from)} → ${formatDateLabel(to)}` : "선택된 기간";
-  const genderLabel = gender === "M" ? "남아" : "여아";
-  const locationLabel = location.matched
-    ? location.label
-    : `${locationInput || location.label}(${location.label} 기준)`;
-
-  const handleSelect = (day: LuckyDay) => {
-    if (!detailHistoryActive.current) {
-      const currentState = window.history.state;
-      const state = currentState && typeof currentState === "object" ? currentState : {};
-      window.history.pushState({ ...state, [DETAIL_HISTORY_KEY]: day.id }, "");
-      detailHistoryActive.current = true;
-    }
-    setSelected(day);
-    setDialogOpen(true);
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    if (open) {
-      setDialogOpen(true);
+    setSearch(null);
+    setSelected(null);
+    setError("");
+    if (!ready) return;
+    if (!searchId) {
+      setError("저장된 검색 번호가 없습니다. 홈에서 새로 검색해 주세요.");
       return;
     }
-
-    closeDialog();
-    if (detailHistoryActive.current) {
-      detailHistoryActive.current = false;
+    if (!session) {
+      setError(authError || "로그인 후 이전 결과 조회에서 다시 열어 주세요.");
+      return;
+    }
+    const controller = new AbortController();
+    serviceRequest<SearchView>("search-get", { searchId }, controller.signal)
+      .then(setSearch)
+      .catch((error) => {
+        if (error.name !== "AbortError") setError(error.message);
+      });
+    return () => controller.abort();
+  }, [searchId, session?.user.id, ready, authError]);
+  function select(day: LuckyDay) {
+    if (!detailHistory.current) {
+      window.history.pushState(
+        { ...window.history.state, birthdayGiftDetail: day.id },
+        "",
+      );
+      detailHistory.current = true;
+    }
+    setSelected(day);
+  }
+  function close(open: boolean) {
+    if (open) return;
+    setSelected(null);
+    if (detailHistory.current) {
+      detailHistory.current = false;
       window.history.back();
     }
-  };
-
+  }
   return (
     <>
-      <main className="page-shell flex-1 space-y-6 py-8 sm:py-10">
-        <section className="surface-card overflow-hidden p-5 sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-4">
-              <Button variant="ghost" size="sm" asChild className="rounded-full px-3">
-                <Link href="/">
-                  <ArrowLeft />
-                  다시 선택하기
-                </Link>
-              </Button>
-              <div className="space-y-3">
-                <div className="eyebrow">
-                  <Sparkles className="size-3.5" />
-                  Best Birthdays
-                </div>
-                <div>
-                  <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                    가장 좋은 날을 골랐어요
-                  </h1>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground sm:text-base">
-                    예정 기간 내 전수 연산 결과를 점수 기준으로 정리해 드립니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="soft-panel w-full max-w-xl space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  {rangeLabel}
-                </span>
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-                  {genderLabel}
-                </span>
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-                  {locationLabel}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {candidateCount}개 후보를 평가했고, 상위 3개 결과를 보여드립니다.
-              </p>
-            </div>
+      <main className="page-shell flex-1 space-y-6 py-8">
+        <section className="surface-card space-y-4 p-6">
+          <div className="flex flex-wrap gap-3">
+            <Button asChild variant="ghost">
+              <Link href="/">← 다시 선택하기</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/history">이전 결과 조회</Link>
+            </Button>
           </div>
+          <p className="eyebrow">우리 아이의 시작을 그려보는 시간</p>
+          <h1 className="text-3xl font-semibold">가장 좋은 날을 골랐어요</h1>
+          {search && (
+            <>
+              <p className="text-sm leading-7">
+                {search.input.from} ~ {search.input.to},{" "}
+                {search.input.gender === "M" ? "남아" : "여아"},{" "}
+                {search.result.location.label}
+              </p>
+              <p className="text-sm leading-7 text-muted-foreground">
+                {search.result.candidates}개 후보 중 상위{" "}
+                {search.result.results.length}개를 소개합니다. 같은 일주가 다섯
+                번 이어지면 다른 일주의 가장 좋은 후보를 먼저 보여드려 비교의
+                폭을 넓혔어요.
+              </p>
+              <p className="text-xs text-primary">
+                {search.unlocked
+                  ? "이 검색의 전체 해설을 열람할 수 있습니다."
+                  : "사주 해석 첫 장과 사주표, 대운 해설을 무료로 볼 수 있습니다."}
+              </p>
+            </>
+          )}
+          <p className="text-xs leading-6 text-muted-foreground">
+            해설과 그림은 생성형 AI를 활용합니다. 전통 사주 해석은 가능성을
+            살펴보는 참고 정보이며, 실제 출산 일정은 담당 의료진과 결정해
+            주세요.
+          </p>
         </section>
-
-        {loading && (
-          <section className="space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-28 animate-pulse rounded-[1.25rem] border border-border/70 bg-secondary/60" />
+        {error ? (
+          <section role="alert" className="surface-card space-y-4 p-6">
+            <p>{error}</p>
+            <Button asChild>
+              <Link href="/account">로그인하기</Link>
+            </Button>
+          </section>
+        ) : !search ? (
+          <p role="status" className="soft-panel">
+            저장된 결과를 불러오고 있어요…
+          </p>
+        ) : (
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold">
+              Best {search.result.results.length}
+            </h2>
+            {search.result.results.map((day) => (
+              <LuckyDayCard
+                key={day.id}
+                searchId={search.id}
+                day={day}
+                featured={day.rank === 1}
+                onClick={() => select(day)}
+              />
             ))}
           </section>
         )}
-
-        {!loading && error && (
-          <section className="surface-card border-destructive/30 bg-destructive/5 p-5">
-            <p className="text-sm font-medium text-destructive">{error}</p>
-          </section>
-        )}
-
-        {!loading && !error && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-3 px-1">
-              <h2 className="text-sm font-semibold text-foreground">Best 3</h2>
-              <p className="text-xs text-muted-foreground">{candidateCount}개 후보 평가</p>
-            </div>
-
-            <div className="space-y-3">
-              {days.map((day) => (
-                <LuckyDayCard
-                  key={day.id}
-                  day={day}
-                  featured={day.rank === 1}
-                  onClick={() => handleSelect(day)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
       </main>
-
-      <LuckyDayDetailDialog
-        day={selected}
-        open={dialogOpen}
-        onOpenChange={handleDialogOpenChange}
-      />
+      {search && selected && (
+        <LuckyDayDetailDialog
+          key={`${search.id}:${selected.id}`}
+          searchId={search.id}
+          day={selected}
+          open={!!selected}
+          onOpenChange={close}
+        />
+      )}
     </>
   );
 }
-
 export default function ResultsPage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <>
       <SiteHeader />
-      <React.Suspense
-        fallback={
-          <main className="page-shell flex-1 py-8 sm:py-10">
-            <div className="h-28 animate-pulse rounded-[1.25rem] border border-border/70 bg-secondary/60" />
-          </main>
-        }
-      >
+      <React.Suspense fallback={<p className="p-10">결과 확인 중…</p>}>
         <ResultsContent />
       </React.Suspense>
-    </div>
+    </>
   );
 }

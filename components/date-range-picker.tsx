@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { addDays, addYears, endOfMonth, format, startOfDay, startOfMonth } from "date-fns";
+import { addDays, addYears, endOfMonth, format, startOfDay } from "date-fns";
 import { ko } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import type { DateRange } from "react-day-picker";
@@ -41,7 +41,7 @@ export function DateRangePicker({
   const disabledDays =
     value?.from && !value.to
       ? [{ before: value.from }, { after: addDays(value.from, MAX_RANGE_DAYS - 1) }]
-      : { before: today };
+      : undefined;
 
   const label = !value?.from
     ? "출산 예정 기간을 선택하세요"
@@ -80,7 +80,6 @@ export function DateRangePicker({
             excludeDisabled
             numberOfMonths={1}
             defaultMonth={value?.from ?? today}
-            startMonth={startOfMonth(today)}
             endMonth={endOfMonth(addYears(today, 2))}
             captionLayout="dropdown"
             navLayout="around"

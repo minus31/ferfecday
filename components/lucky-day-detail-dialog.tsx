@@ -1,28 +1,6 @@
 "use client";
-
 import * as React from "react";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
-import {
-  Activity,
-  Brain,
-  ChevronDown,
-  Compass,
-  Heart,
-  HandHeart,
-  House,
-  LoaderCircle,
-  MessageCircle,
-  RefreshCw,
-  Route,
-  ShieldCheck,
-  Sparkles,
-  Users,
-  WalletCards,
-  type LucideIcon,
-} from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
+import { LockKeyhole, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,706 +8,485 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { LuckyAnnualFortune, LuckyDaewoon, LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
-import { getDayPillarProfile } from "@/lib/saju/day-pillar-profiles";
+import { Button } from "@/components/ui/button";
+import { serviceRequest } from "@/lib/supabase-browser";
+import { REPORT_PRICE, type ReportView } from "@/lib/product";
+import type { LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
 import {
-  buildDaewoonNarrativeRequest,
-  buildLocalDaewoonNarrative,
-  getDaewoonPeriod,
-  parseDaewoonNarrative,
-  type DaewoonNarrative,
-} from "@/lib/saju/daewoon-ai";
-import {
-  buildFriendlySajuSections,
-  buildIntegratedSajuReport,
-  evaluateFriendlySajuSections,
-  sanitizeFriendlySajuText,
-  type FriendlyReportSection,
-  type FriendlySectionIcon,
-} from "@/lib/saju/integrated-report";
-import {
-  getSajuReportEndpoint,
-  requestSajuReport,
-  SAJU_REPORT_MODEL,
-} from "@/lib/saju/report-ai";
-import { cn } from "@/lib/utils";
-
-interface LuckyDayDetailDialogProps {
-  day: LuckyDay | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-type FiveElement = "tree" | "fire" | "earth" | "metal" | "water";
-
-const STEM_KO: Record<string, string> = {
-  甲: "갑", 乙: "을", 丙: "병", 丁: "정", 戊: "무",
-  己: "기", 庚: "경", 辛: "신", 壬: "임", 癸: "계",
+  qualitativeWeight,
+  strengthDescription,
+} from "@/lib/saju/product-report";
+import { collectStars, sajuLabel } from "@/lib/saju/stars";
+import { getDaewoonPeriod } from "@/lib/saju/daewoon-ai";
+const ELEMENTS = {
+  tree: "목",
+  fire: "화",
+  earth: "토",
+  metal: "금",
+  water: "수",
 };
-const BRANCH_KO: Record<string, string> = {
-  子: "자", 丑: "축", 寅: "인", 卯: "묘", 辰: "진", 巳: "사",
-  午: "오", 未: "미", 申: "신", 酉: "유", 戌: "술", 亥: "해",
+const COLORS = {
+  tree: "#3f9b64",
+  fire: "#e56b6f",
+  earth: "#d59a45",
+  metal: "#8f8c87",
+  water: "#55769a",
 };
-const SIPSIN_KO: Record<string, string> = {
-  本元: "본원", 比肩: "비견", 劫財: "겁재", 食神: "식신", 傷官: "상관",
-  偏財: "편재", 正財: "정재", 偏官: "편관", 正官: "정관", 偏印: "편인", 正印: "정인",
-};
-const UNSEONG_KO: Record<string, string> = {
-  長生: "장생", 沐浴: "목욕", 冠帶: "관대", 建祿: "건록", 乾祿: "건록",
-  帝旺: "제왕", 衰: "쇠", 病: "병", 死: "사", 墓: "묘", 絶: "절", 胎: "태", 養: "양",
-};
-const SINSAL_KO: Record<string, string> = {
-  劫殺: "겁살", 災殺: "재살", 天殺: "천살", 地殺: "지살", 年殺: "년살", 月殺: "월살",
-  亡身: "망신살", 將星: "장성살", 攀鞍: "반안살", 驛馬: "역마살", 六害: "육해살", 華蓋: "화개살",
-};
-const ELEMENT_KO: Record<FiveElement, string> = {
-  tree: "목", fire: "화", earth: "토", metal: "금", water: "수",
-};
-const ELEMENT_HANJA: Record<FiveElement, string> = {
-  tree: "木", fire: "火", earth: "土", metal: "金", water: "水",
-};
-const ELEMENT_COLORS: Record<FiveElement, string> = {
-  tree: "#3f9b64", fire: "#e56b6f", earth: "#d59a45", metal: "#8f8c87", water: "#55769a",
-};
-const ELEMENT_TEXT_CLASS: Record<FiveElement, string> = {
-  tree: "text-emerald-700", fire: "text-rose-600", earth: "text-amber-600",
-  metal: "text-stone-500", water: "text-slate-700",
-};
-const ELEMENT_BG_CLASS: Record<FiveElement, string> = {
-  tree: "bg-emerald-100", fire: "bg-rose-100", earth: "bg-amber-100",
-  metal: "bg-stone-200", water: "bg-slate-200",
-};
-const ELEMENT_ORDER: FiveElement[] = ["tree", "fire", "earth", "metal", "water"];
-const GENERATES: Record<FiveElement, FiveElement> = {
-  tree: "fire", fire: "earth", earth: "metal", metal: "water", water: "tree",
-};
-const CONTROLS: Record<FiveElement, FiveElement> = {
-  tree: "earth", earth: "water", water: "fire", fire: "metal", metal: "tree",
-};
-
-const FRIENDLY_SECTION_ICON: Record<FriendlySectionIcon, LucideIcon> = {
-  sparkles: Sparkles,
-  heart: Heart,
-  brain: Brain,
-  message: MessageCircle,
-  users: Users,
-  "hand-heart": HandHeart,
-  shield: ShieldCheck,
-  activity: Activity,
-  compass: Compass,
-  wallet: WalletCards,
-  home: House,
-  route: Route,
-};
-
-function tr(value: string, table: Record<string, string>) {
-  return table[value] ?? value;
-}
-
-function getElement(char: string): FiveElement {
-  if ("甲乙寅卯".includes(char)) return "tree";
-  if ("丙丁巳午".includes(char)) return "fire";
-  if ("戊己辰戌丑未".includes(char)) return "earth";
-  if ("庚辛申酉".includes(char)) return "metal";
-  return "water";
-}
-
-function getRole(dayElement: FiveElement, target: FiveElement) {
-  if (dayElement === target) return "비겁";
-  if (GENERATES[dayElement] === target) return "식상";
-  if (GENERATES[target] === dayElement) return "인성";
-  if (CONTROLS[dayElement] === target) return "재성";
-  return "관성";
-}
-
-function rotateElements(dayElement: FiveElement) {
-  const index = ELEMENT_ORDER.indexOf(dayElement);
-  return [...ELEMENT_ORDER.slice(index), ...ELEMENT_ORDER.slice(0, index)];
-}
-
-function Section({ title, children }: {
+function Section({
+  title,
+  children,
+}: {
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-[0_4px_12px_rgba(36,30,34,0.08)] sm:p-6">
-      <div>
-        <h3 className="font-serif text-xl font-bold tracking-tight sm:text-2xl">{title}</h3>
-      </div>
-      <div className="mt-5 min-w-0">{children}</div>
+    <section className="min-w-0 rounded-xl border bg-card p-4 sm:p-6">
+      <h3 className="text-xl font-semibold">{title}</h3>
+      <div className="mt-5">{children}</div>
     </section>
   );
 }
-
-function GanjiValue({ char, compact = false }: { char: string; compact?: boolean }) {
-  const element = getElement(char);
-  const hangul = STEM_KO[char] ?? BRANCH_KO[char] ?? char;
+function Paragraphs({ body }: { body: string }) {
   return (
-    <div className={cn("font-bold leading-none", ELEMENT_TEXT_CLASS[element])}>
-      <span className={compact ? "text-2xl" : "text-xl sm:text-4xl"}>{char}</span>
-      <span className={cn("ml-0.5 font-semibold sm:ml-1", compact ? "text-xs" : "text-[10px] sm:text-sm")}>{hangul}</span>
-      {!compact && (
-        <span className="mt-1 block text-[9px] font-medium opacity-75 sm:text-[10px]">
-          {ELEMENT_KO[element]} · {ELEMENT_HANJA[element]}
-        </span>
-      )}
+    <div className="space-y-4 text-sm leading-8 text-foreground/85 sm:text-[15px]">
+      {body.split(/\n\s*\n/).map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
     </div>
   );
 }
-
 function SajuTable({ day }: { day: LuckyDay }) {
-  const rows: Array<{ label: string; render: (pillar: LuckyPillar, index: number) => React.ReactNode; className?: string }> = [
-    { label: "천간", render: (pillar) => <GanjiValue char={pillar.stem} /> , className: "py-4" },
-    { label: "십성", render: (pillar) => tr(pillar.stemSipsin, SIPSIN_KO) },
-    { label: "지지", render: (pillar) => <GanjiValue char={pillar.branch} />, className: "py-4" },
-    { label: "십성", render: (pillar) => tr(pillar.branchSipsin, SIPSIN_KO) },
-    { label: "지장간", render: (pillar) => [...pillar.jigang].map((char) => STEM_KO[char] ?? char).join("·") || "-" },
-    { label: "12운성", render: (pillar) => tr(pillar.unseong, UNSEONG_KO) },
-    { label: "12신살", render: (pillar) => tr(pillar.sinsal, SINSAL_KO) },
-    { label: "공망", render: (_, index) => day.gongmang.pillarIndices.includes(index) ? "공망" : "-" },
+  const rows: Array<[string, (p: LuckyPillar) => string]> = [
+    ["천간", (p) => p.stem],
+    ["십성", (p) => sajuLabel(p.stemSipsin)],
+    ["지지", (p) => p.branch],
+    ["십성", (p) => sajuLabel(p.branchSipsin)],
+    ["지장간", (p) => p.jigang],
+    ["12운성", (p) => sajuLabel(p.unseong)],
+    ["12신살", (p) => sajuLabel(p.sinsal)],
   ];
-
   return (
-    <Section title="사주 테이블">
-      <div className="w-full rounded-md border border-border">
-        <div className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-[10px] font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-          <div className="border-r border-border p-1.5 sm:p-2" />
-          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-1.5 last:border-r-0 sm:p-2">{pillar.name}</div>)}
-        </div>
-        {rows.map((row, rowIndex) => (
-          <div key={`${row.label}-${rowIndex}`} className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[10px] sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-            <div className="flex items-center justify-center border-r border-border bg-background p-1 font-semibold text-muted-foreground sm:justify-start sm:p-2">{row.label}</div>
-            {day.pillars.map((pillar, index) => (
-              <div key={`${pillar.name}-${row.label}`} className={cn("flex min-w-0 items-center justify-center overflow-hidden border-r border-border px-0.5 py-2 font-medium last:border-r-0 sm:px-1.5", row.className)}>
-                {row.render(pillar, index)}
-              </div>
+    <Section title="사주 원국">
+      <table className="w-full table-fixed border-collapse text-center text-xs sm:text-sm">
+        <caption className="sr-only">
+          시주, 일주, 월주, 년주별 사주 구성
+        </caption>
+        <thead>
+          <tr>
+            <th className="w-14 border p-2">구분</th>
+            {day.pillars.map((p) => (
+              <th key={p.name} className="border bg-secondary/40 p-2">
+                {p.name}
+                <span className="mt-1 block font-normal text-muted-foreground">
+                  {p.ganziHangul}
+                </span>
+              </th>
             ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, render], index) => (
+            <tr key={`${label}-${index}`}>
+              <th className="border bg-secondary/30 p-2 font-medium">
+                {label}
+              </th>
+              {day.pillars.map((p) => (
+                <td
+                  key={p.name}
+                  className={`break-words border px-1 py-3 ${label === "천간" || label === "지지" ? "text-2xl font-bold text-primary sm:text-3xl" : ""}`}
+                >
+                  {render(p)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Section>
+  );
+}
+function Elements({ day }: { day: LuckyDay }) {
+  const keys = Object.keys(ELEMENTS) as Array<keyof typeof ELEMENTS>;
+  const points = keys.map((key, i) => {
+    const angle = ((-90 + i * 72) * Math.PI) / 180;
+    return { key, x: 50 + 28 * Math.cos(angle), y: 50 + 28 * Math.sin(angle) };
+  });
+  const data = points
+    .map(({ key, x, y }) => {
+      const size = Math.max(
+        0.08,
+        Math.min(1, day.elementQi.percentages[key] / 40),
+      );
+      return `${50 + (x - 50) * size},${50 + (y - 50) * size}`;
+    })
+    .join(" ");
+  return (
+    <Section title="오행의 어우러짐">
+      <div className="grid items-center gap-4 sm:grid-cols-2">
+        <svg
+          viewBox="0 0 100 100"
+          className="mx-auto w-full max-w-xs"
+          role="img"
+          aria-label="다섯 오행의 상대적인 강약"
+        >
+          <polygon
+            points={points.map((p) => `${p.x},${p.y}`).join(" ")}
+            fill="none"
+            stroke="#d6d3d1"
+            strokeWidth=".5"
+          />
+          <polygon
+            points={data}
+            fill="rgba(110,59,99,.12)"
+            stroke="#6e3b63"
+            strokeWidth=".7"
+          />
+          {points.map((p) => (
+            <text
+              key={p.key}
+              x={50 + (p.x - 50) * 1.35}
+              y={51 + (p.y - 50) * 1.35}
+              fill={COLORS[p.key]}
+              textAnchor="middle"
+              fontSize="5"
+            >
+              {ELEMENTS[p.key]}
+            </text>
+          ))}
+        </svg>
+        <dl className="space-y-3 text-sm">
+          {keys.map((key) => (
+            <div key={key} className="flex justify-between gap-4 border-b pb-2">
+              <dt style={{ color: COLORS[key] }}>{ELEMENTS[key]}</dt>
+              <dd>{qualitativeWeight(day.elementQi.percentages[key])} 기운</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <p className="mt-4 text-xs leading-6 text-muted-foreground">
+        오행은 기질의 서로 다른 쓰임을 살펴보는 전통적 분류입니다. 많고
+        적음만으로 좋고 나쁨이나 건강을 판단하지 않습니다.
+      </p>
+    </Section>
+  );
+}
+function Stars({ day }: { day: LuckyDay }) {
+  const stars = collectStars(day);
+  return (
+    <Section title="신살과 길성">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {day.pillars.map((p, i) => (
+          <div key={p.name} className="rounded-xl border p-3">
+            <h4 className="mb-3 text-sm font-semibold">
+              {p.name}, {p.ganziHangul}
+            </h4>
+            <ul className="space-y-2 text-xs leading-5">
+              {stars.pillars[i].map((star) => (
+                <li key={star}>{star}</li>
+              ))}
+              {!stars.pillars[i].length && <li>해당 없음</li>}
+            </ul>
           </div>
         ))}
       </div>
-    </Section>
-  );
-}
-
-function ElementPentagon({ day }: { day: LuckyDay }) {
-  const dayElement = getElement(day.pillars[1].stem);
-  const elements = rotateElements(dayElement);
-  const center = { x: 50, y: 49 };
-  const radius = 31;
-  const points = elements.map((element, index) => {
-    const angle = (-90 + index * 72) * Math.PI / 180;
-    return { element, x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius };
-  });
-  const dataPoints = points.map(({ element, x, y }) => {
-    const ratio = Math.max(0.12, Math.min(1, day.elementQi.percentages[element] / 40));
-    return `${center.x + (x - center.x) * ratio},${center.y + (y - center.y) * ratio}`;
-  }).join(" ");
-
-  return (
-    <Section title="오행 기도">
-      <div className="mx-auto max-w-xl">
-        <svg viewBox="0 0 100 102" className="h-auto w-full" role="img" aria-label="오행 기도 오각형 차트">
-          {[1, 0.66, 0.33].map((scale) => (
-            <polygon key={scale} points={points.map(({ x, y }) => `${center.x + (x - center.x) * scale},${center.y + (y - center.y) * scale}`).join(" ")} fill="none" stroke="#d6d3d1" strokeWidth="0.35" />
-          ))}
-          {points.map(({ x, y, element }) => <line key={element} x1={center.x} y1={center.y} x2={x} y2={y} stroke="#e7e5e4" strokeWidth="0.35" />)}
-          <polygon points={dataPoints} fill="rgba(110,59,99,.12)" stroke="#6e3b63" strokeWidth="0.65" />
-          {points.map(({ element, x, y }, index) => {
-            const labelX = center.x + (x - center.x) * 1.34;
-            const labelY = center.y + (y - center.y) * 1.34;
-            return (
-              <g key={element}>
-                <circle cx={x} cy={y} r="2" fill={ELEMENT_COLORS[element]} />
-                <text x={labelX} y={labelY - 1.5} textAnchor="middle" fill={ELEMENT_COLORS[element]} className="text-[3.4px] font-bold">
-                  {ELEMENT_KO[element]}({getRole(dayElement, element)}){index === 0 ? " · 일간" : ""}
-                </text>
-                <text x={labelX} y={labelY + 3} textAnchor="middle" fill={ELEMENT_COLORS[element]} opacity="0.82" className="text-[3.1px] font-semibold">
-                  {day.elementQi.percentages[element].toFixed(1)}%
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-    </Section>
-  );
-}
-
-const SPECIAL_SAL_META: Array<{ key: keyof LuckyDay["specialSals"]; label: string }> = [
-  { key: "cheonul", label: "천을귀인" }, { key: "cheonduk", label: "천덕귀인" },
-  { key: "wolduk", label: "월덕귀인" }, { key: "munchang", label: "문창귀인" },
-  { key: "geumyeo", label: "금여록" }, { key: "dohwa", label: "도화살" },
-  { key: "yangin", label: "양인살" },
-];
-
-function getPillarStars(day: LuckyDay, index: number) {
-  const stars = SPECIAL_SAL_META.filter(({ key }) => {
-    const value = day.specialSals[key];
-    return Array.isArray(value) && value.includes(index);
-  }).map(({ label }) => label);
-  if (index === 1 && day.specialSals.baekho) stars.push("백호살");
-  if (index === 1 && day.specialSals.goegang) stars.push("괴강살");
-  if (index === 1 && day.specialSals.hongyeom) stars.push("홍염살");
-  return stars;
-}
-
-function StarsTable({ day }: { day: LuckyDay }) {
-  return (
-    <Section title="신살과 길성">
-      <div className="w-full rounded-md border border-border">
-        <div className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] bg-background text-center text-[10px] font-semibold sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-          <div className="border-r border-border p-1.5 sm:p-2" />
-          {day.pillars.map((pillar) => <div key={pillar.name} className="border-r border-border p-1.5 last:border-r-0 sm:p-2">{pillar.name}</div>)}
+      {stars.relations.length > 0 && (
+        <div className="mt-4 rounded-xl bg-secondary/40 p-4">
+          <h4 className="text-sm font-semibold">
+            기둥 사이에서 함께 작용하는 관계
+          </h4>
+          <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+            {stars.relations.map((relation) => (
+              <li key={relation}>{relation}</li>
+            ))}
+          </ul>
         </div>
-        <div className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] border-t border-border text-center text-[9px] leading-5 sm:grid-cols-[5rem_repeat(4,minmax(0,1fr))] sm:text-sm">
-          <div className="flex items-center justify-center border-r border-border bg-background p-1 font-semibold text-muted-foreground sm:justify-start sm:p-2">지지</div>
-          {day.pillars.map((pillar, index) => (
-            <div key={pillar.name} className="min-h-24 overflow-hidden border-r border-border px-0.5 py-2 last:border-r-0 sm:p-2">
-              {getPillarStars(day, index).length ? getPillarStars(day, index).map((star) => <p key={star}>{star}</p>) : <p className="text-muted-foreground">-</p>}
-            </div>
-          ))}
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-function Yongshin({ day }: { day: LuckyDay }) {
-  return (
-    <Section title="용신">
-      <div className="rounded-md border border-accent bg-gold-soft p-4">
-        <p className="font-mono text-xs font-semibold tracking-wide text-primary">용신</p>
-        <p className="mt-1 text-lg font-bold">
-          {day.yongshin.method === "johu" ? "조후용신" : "억부용신"} : {ELEMENT_KO[day.yongshin.element]}({ELEMENT_HANJA[day.yongshin.element]})
-        </p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{day.yongshin.message}</p>
-      </div>
-    </Section>
-  );
-}
-
-function StrengthChart({ day }: { day: LuckyDay }) {
-  const labels = ["극신약", "신약", "약신약", "중화", "약신강", "신강", "극신강"];
-  const gradeIndex = labels.indexOf(day.strength.gradeLabel);
-  const position = gradeIndex >= 0 ? (gradeIndex / (labels.length - 1)) * 100 : 50;
-  return (
-    <Section title="신강 / 신약 지수">
-      <div className="rounded-md border border-border bg-background p-4 sm:p-6">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span>득령 {day.strength.roleQi.insung.percentage >= 20 ? "●" : "×"}</span>
-          <span>득지 {day.strength.roleQi.bigeop.percentage >= 20 ? "●" : "×"}</span>
-          <span>득시 {day.strength.supportQi >= day.strength.drainControlQi ? "●" : "×"}</span>
-          <strong className="text-primary">{day.strength.gradeLabel}</strong>
-        </div>
-        <p className="mt-5 text-sm leading-7">이 사주는 <strong>{day.strength.gradeLabel}</strong>에 해당합니다. 생조 {day.strength.supportQi.toFixed(1)}, 극설 {day.strength.drainControlQi.toFixed(1)}, SI {day.strength.si.toFixed(4)}, 기도 편차 σ {day.strength.sigma.toFixed(2)}%를 사용했습니다.</p>
-        {day.strength.exclusionReason && <p className="mt-2 text-xs leading-5 text-muted-foreground">{day.strength.exclusionReason} 조건으로 Base Score가 {day.strength.baseScore.toFixed(1)}점으로 고정됐습니다.</p>}
-        <div className="mt-10">
-          <div className="relative h-6">
-            <div className="absolute inset-x-0 top-2 h-2 rounded-full bg-gradient-to-r from-sky-300 via-stone-200 to-rose-300" />
-            <div className="absolute top-0 -translate-x-1/2" style={{ left: `${Math.max(1, Math.min(99, position))}%` }}>
-              <span className="absolute bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-bold">나</span>
-              <div className="size-6 rounded-full border-4 border-card bg-primary shadow" />
-            </div>
-          </div>
-          <div className="mt-2 grid grid-cols-7 text-center text-[8px] text-muted-foreground sm:text-xs">
-            {labels.map((label) => <span key={label}>{label}</span>)}
-          </div>
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-function FortuneGanji({ ganzi }: { ganzi: string }) {
-  return (
-    <div className="grid gap-1">
-      {[...ganzi].map((char, index) => {
-        const element = getElement(char);
-        return <div key={`${char}-${index}`} className={cn("flex size-12 items-center justify-center rounded-lg text-2xl font-bold", ELEMENT_BG_CLASS[element], ELEMENT_TEXT_CLASS[element])}>{char}</div>;
-      })}
-    </div>
-  );
-}
-
-function FortuneColumn({
-  item,
-  selected = false,
-  onSelect,
-}: {
-  item: LuckyDaewoon | LuckyAnnualFortune;
-  selected?: boolean;
-  onSelect?: () => void;
-}) {
-  const isDaewoon = "age" in item;
-  const content = (
-    <div className="grid justify-items-center gap-2 text-center">
-      <div className="h-10 text-sm font-semibold leading-5">
-        <p>{isDaewoon ? `${item.age}세` : item.year}</p>
-        <p className="text-xs text-muted-foreground">{tr(item.stemSipsin, SIPSIN_KO)}</p>
-      </div>
-      <FortuneGanji ganzi={item.ganzi} />
-      <div className="text-xs leading-5 text-muted-foreground">
-        <p>{tr(item.branchSipsin, SIPSIN_KO)}</p>
-        <p>{tr(item.unseong, UNSEONG_KO)}</p>
-        <p>{tr(item.sinsal, SINSAL_KO)}</p>
-      </div>
-    </div>
-  );
-  if (!onSelect) return <div className="w-[5.3rem] shrink-0">{content}</div>;
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        "w-[5.3rem] shrink-0 rounded-xl border px-1 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-        selected ? "border-primary bg-gold-soft shadow-sm" : "border-transparent hover:border-border hover:bg-background",
       )}
-    >
-      {content}
-    </button>
+      <p className="mt-4 text-xs leading-6 text-muted-foreground">
+        현재 계산 체계에서 확인된 신살, 길성, 공망과 지지 관계를 모두
+        표시합니다. 원진, 귀문, 형, 충 같은 이름은 조율할 긴장을 상징하며 사고,
+        질병, 불행의 예고가 아닙니다. 신살의 채택 범위는 명리 학파마다 다릅니다.
+      </p>
+    </Section>
   );
 }
-
-type DaewoonNarrativeState =
-  | { status: "prompt" }
-  | { status: "loading" }
-  | { status: "ready"; narrative: DaewoonNarrative; source: "ai" | "local" }
-  | { status: "error" };
-
-function DaewoonNarrativeCard({
+function FortuneFlow({
   day,
-  selectedIndex,
-  requested,
-  open,
+  report,
 }: {
   day: LuckyDay;
-  selectedIndex: number;
-  requested: boolean;
-  open: boolean;
+  report: ReportView | null;
 }) {
-  const period = React.useMemo(
-    () => getDaewoonPeriod(day, selectedIndex),
-    [day, selectedIndex],
-  );
-  const cacheRef = React.useRef(new Map<string, DaewoonNarrative>());
-  const [retryCount, setRetryCount] = React.useState(0);
-  const [state, setState] = React.useState<DaewoonNarrativeState>({ status: "prompt" });
-
-  React.useEffect(() => {
-    setRetryCount(0);
-    setState({ status: requested ? "loading" : "prompt" });
-  }, [day.id, requested, selectedIndex]);
-
-  React.useEffect(() => {
-    if (!open || !requested || !period) return;
-
-    const cacheKey = `${day.id}:${selectedIndex}`;
-    const cached = cacheRef.current.get(cacheKey);
-    if (cached) {
-      setState({ status: "ready", narrative: cached, source: "ai" });
-      return;
-    }
-
-    const request = buildDaewoonNarrativeRequest(day, selectedIndex);
-    const localNarrative = buildLocalDaewoonNarrative(day, selectedIndex);
-    if (!request) {
-      setState(localNarrative
-        ? { status: "ready", narrative: localNarrative, source: "local" }
-        : { status: "error" });
-      return;
-    }
-
-    const controller = new AbortController();
-    setState({ status: "loading" });
-    requestSajuReport<unknown>(request, controller.signal)
-      .then((payload) => {
-        const narrative = parseDaewoonNarrative(payload, period.ageRange);
-        if (!narrative) throw new Error("Invalid daewoon narrative response");
-        cacheRef.current.set(cacheKey, narrative);
-        setState({ status: "ready", narrative, source: "ai" });
-      })
-      .catch((error) => {
-        if ((error as Error).name !== "AbortError") {
-          setState(localNarrative
-            ? { status: "ready", narrative: localNarrative, source: "local" }
-            : { status: "error" });
-        }
-      });
-
-    return () => controller.abort();
-  }, [day, open, period, requested, retryCount, selectedIndex]);
-
-  if (!period) return null;
-
-  return (
-    <div className="mt-5 rounded-xl border border-accent bg-gold-soft/60 p-4 sm:p-5" aria-live="polite">
-      <div className="flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-primary shadow-sm">
-          <Sparkles className="size-4" aria-hidden="true" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-primary">시기별 맞춤 해설</p>
-          <h5 className="mt-1 text-sm font-bold leading-6 sm:text-base">
-            {period.ageRange[0]}~{period.ageRange[1]}세의 운세와 삶의 변화
-          </h5>
-        </div>
-      </div>
-
-      {state.status === "prompt" && (
-        <p className="mt-4 text-sm leading-7 text-foreground/75">
-          위 흐름을 선택하면 해당 연령의 삶에서 두드러질 주제와 활용 방법을 자세히 보여드려요.
-        </p>
-      )}
-      {state.status === "loading" && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <LoaderCircle className="size-4 animate-spin text-primary" aria-hidden="true" />
-          선택한 시기의 흐름을 정리하고 있어요…
-        </div>
-      )}
-      {state.status === "ready" && (
-        <>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-foreground/80 sm:text-[15px]">
-            {state.narrative.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-          </div>
-          {state.source === "local" && (
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              연결이 원활하지 않아 계산된 사주 흐름을 바탕으로 한 기본 해설을 보여드렸어요.
-            </p>
-          )}
-        </>
-      )}
-      {state.status === "error" && (
-        <div className="mt-4 flex flex-col items-start gap-3">
-          <p className="text-sm leading-7 text-muted-foreground">맞춤 해설을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
-          <button
-            type="button"
-            onClick={() => setRetryCount((count) => count + 1)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <RefreshCw className="size-3.5" aria-hidden="true" />
-            다시 생성하기
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FortuneFlow({ day, open }: { day: LuckyDay; open: boolean }) {
-  const reversedDaewoon = [...day.daewoon].reverse();
-  const [selectedIndex, setSelectedIndex] = React.useState(day.daewoon[0]?.index ?? 1);
-  const [requestedIndex, setRequestedIndex] = React.useState<number | null>(null);
-  React.useEffect(() => {
-    setSelectedIndex(day.daewoon[0]?.index ?? 1);
-    setRequestedIndex(null);
-  }, [day]);
-  const selectedDaewoon = day.daewoon.find((item) => item.index === selectedIndex) ?? day.daewoon[0];
-  const period = getDaewoonPeriod(day, selectedDaewoon?.index ?? selectedIndex);
-  const startYear = period?.yearRange[0] ?? Number(day.date.slice(0, 4));
-  const endYear = period?.yearRange[1] ?? startYear + 9;
-  const reversedAnnualFortunes = [...(period?.annualFortunes ?? [])].reverse();
-
+  const [selected, setSelected] = React.useState(day.daewoon[0]?.index || 1);
+  const period = getDaewoonPeriod(day, selected);
   return (
     <Section title="대운과 세운">
-      <div>
-        <h4 className="text-lg font-bold">대운</h4>
-        <div className="mt-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-4">{reversedDaewoon.map((item) => (
-          <FortuneColumn
+      <p className="text-sm leading-7 text-muted-foreground">
+        전체 대운의 해설은 보고서와 함께 한 번에 준비됩니다. 아래 연령을
+        선택하면 해당 시기의 세운을 볼 수 있습니다.
+      </p>
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-3">
+        {day.daewoon.map((item) => (
+          <button
             key={item.index}
-            item={item}
-            selected={item.index === selectedDaewoon?.index}
-            onSelect={() => {
-              setSelectedIndex(item.index);
-              setRequestedIndex(item.index);
-            }}
-          />
-        ))}</div>
+            aria-pressed={selected === item.index}
+            onClick={() => setSelected(item.index)}
+            className={`w-24 shrink-0 rounded-xl border p-3 text-center ${selected === item.index ? "border-primary bg-primary/5" : ""}`}
+          >
+            <span className="block text-xs">{item.age}세부터</span>
+            <strong className="my-2 block text-xl">{item.ganzi}</strong>
+            <span className="block text-xs">{item.ganziHangul}</span>
+            <span className="mt-2 block text-[11px] text-muted-foreground">
+              {sajuLabel(item.stemSipsin)}, {sajuLabel(item.branchSipsin)}
+              <br />
+              {sajuLabel(item.unseong)}, {sajuLabel(item.sinsal)}
+              {item.isGongmang ? ", 공망" : ""}
+            </span>
+          </button>
+        ))}
       </div>
-      <DaewoonNarrativeCard
-        day={day}
-        selectedIndex={selectedDaewoon?.index ?? selectedIndex}
-        requested={requestedIndex === selectedDaewoon?.index}
-        open={open}
-      />
-      <div className="mt-6 border-t pt-6">
-        <h4 className="text-lg font-bold">
-          세운 <span className="ml-1 text-sm font-normal text-muted-foreground">{startYear}~{endYear}년</span>
-        </h4>
-        <div className="mt-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-4">{reversedAnnualFortunes.map((item) => <FortuneColumn key={item.year} item={item} />)}</div>
+      <div className="mt-4 space-y-3">
+        {report ? (
+          report.periods.map((item) => (
+            <details
+              key={item.index}
+              className="rounded-xl border p-4"
+              open={item.index === selected}
+            >
+              <summary className="cursor-pointer text-sm font-semibold">
+                {item.title}
+              </summary>
+              <div className="mt-4">
+                <Paragraphs body={item.body} />
+              </div>
+            </details>
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            전체 대운 해설을 함께 준비하고 있어요…
+          </p>
+        )}
       </div>
-    </Section>
-  );
-}
-
-function Interpretation({ day, open }: { day: LuckyDay; open: boolean }) {
-  const dayPillarProfile = getDayPillarProfile(day.dayPillar);
-  const integratedReport = React.useMemo(() => buildIntegratedSajuReport(day), [day]);
-  const localSections = React.useMemo(() => buildFriendlySajuSections(day), [day]);
-  const [sections, setSections] = React.useState<FriendlyReportSection[]>(() => localSections);
-  const [openSectionId, setOpenSectionId] = React.useState(localSections[0]?.id ?? "");
-  const [source, setSource] = React.useState<"local" | "ai" | "loading">("local");
-
-  React.useEffect(() => {
-    setSections(localSections);
-    setOpenSectionId(localSections[0]?.id ?? "");
-    if (!open || !getSajuReportEndpoint()) {
-      setSource("local");
-      return;
-    }
-    const controller = new AbortController();
-    setSource("loading");
-    requestSajuReport<{ sections?: Array<Partial<FriendlyReportSection>> }>({
-      model: SAJU_REPORT_MODEL,
-      task: "full_saju_report",
-      report: {
-        selection: {
-          date: day.date,
-          time: day.timeLabel,
-          rank: day.rank,
-          score: day.score,
-          scoreBreakdown: day.scoring.breakdown,
-          purpose: "출산 예정 기간 안에서 이 날짜를 선택했을 때 태어날 아이의 사주상 가능성을 설명",
-        },
-        pillars: day.pillars,
-        dayPillar: day.dayPillar,
-        dayPillarProfile,
-        monthBranchSipsin: day.pillars[2].branchSipsin,
-        elementQi: day.elementQi.percentages,
-        strength: day.strength,
-        yongshin: day.yongshin,
-        daewoon: day.daewoon.slice(0, 8),
-        knowledge: {
-          context: integratedReport.knowledge.context,
-          matchedRules: [
-            ...integratedReport.knowledge.theme1,
-            ...integratedReport.knowledge.theme2,
-            ...integratedReport.knowledge.theme3,
-          ],
-        },
-        daewoonAnalysis: integratedReport.daewoon,
-        relations: day.relations,
-        specialSals: day.specialSals,
-        gongmang: day.gongmang,
-        scoringDetails: day.scoring.details,
-      },
-      output: {
-        strategyVersion: "strategy_saju_explain.v3",
-        language: "ko",
-        audience: "parents comparing birth-date candidates for an expected baby; explain what choosing this date may mean",
-        voice: "speak as the finished service directly to parents; never refer to a profile, supplied data, calculation process, report, or AI author",
-        style: "plain, warm and specific Korean; use cautious possibility language; translate useful saju evidence into everyday meaning and never expose internal codes",
-        title: "10-55 Korean characters; state an observable child trait or useful parenting implication; never use a landscape, natural object, or traditional symbolic image as the title",
-        sections: "return the prescribed 12 ids and icons in order, with exactly 2 readable paragraphs totaling 240-650 Korean characters and 5-8 sentences each",
-        contentStructure: "use at least two distinct chart facts per section, explain their causal meaning, then add an age-appropriate concrete scenario, observable sign, and action or question; do not repeat advice or pad with decorative prose",
-        ageRule: "career and money must distinguish childhood clues from adult use; adult-relationships must describe adult intimacy and relationship skills; life-flow must call people age 19+ an adult child/adult/middle-aged adult, never a baby or child being parented",
-        wellbeingSafety: "translate element balance only into activity, rest, sleep, and recovery routines; never infer organs, diseases, or constitution, and state that medical judgment comes first",
-        partnershipSafety: "never predict a spouse's appearance, occupation, status, gender role, meeting route, marriage timing, or marriage outcome",
-        examples: "prefer clearly labeled hypothetical child scenarios and comparisons with the same dominant pattern; use a celebrity only when birth date and time and the exact relevant chart structure are verified, cited, and presented as an analogy rather than proof",
-      },
-    }, controller.signal)
-      .then((report) => {
-        const generatedSections = report.sections
-          ?.filter((section) => typeof section.title === "string" && typeof section.body === "string")
-          .map((section, index) => ({
-            id: typeof section.id === "string" ? section.id : "",
-            icon: typeof section.icon === "string" && Object.hasOwn(FRIENDLY_SECTION_ICON, section.icon)
-              ? section.icon as FriendlySectionIcon
-              : localSections[index]?.icon ?? "sparkles",
-            title: sanitizeFriendlySajuText(section.title as string),
-            body: sanitizeFriendlySajuText(section.body as string),
-          }));
-        if (generatedSections && evaluateFriendlySajuSections(generatedSections, day).accepted) {
-          setSections(generatedSections);
-          setSource("ai");
-        } else {
-          setSource("local");
-        }
-      })
-      .catch((error) => {
-        if ((error as Error).name !== "AbortError") setSource("local");
-      });
-    return () => controller.abort();
-  }, [day, integratedReport, localSections, open]);
-
-  return (
-    <Section title="사주 해석">
-      <div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
-        <Sparkles className="size-3.5 text-primary" />
-        {source === "loading" ? "선택한 날짜의 해설을 정리하고 있어요…" : "선택한 날짜에 맞춘 사주 해설"}
-      </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-background">
-        {sections.map((section, index) => {
-          const expanded = section.id === openSectionId;
-          const Icon = FRIENDLY_SECTION_ICON[section.icon];
-          const contentId = `saju-section-${section.id}`;
-          return (
-            <article key={section.id} className={cn(index > 0 && "border-t border-border")}>
-              <button
-                type="button"
-                aria-expanded={expanded}
-                aria-controls={contentId}
-                onClick={() => setOpenSectionId(expanded ? "" : section.id)}
-                className="flex w-full items-center gap-3 px-3 py-4 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5"
+      {period && (
+        <div className="mt-6 border-t pt-5">
+          <h4 className="font-semibold">
+            {period.yearRange[0]}~{period.yearRange[1]}년의 세운
+          </h4>
+          <div className="mt-4 flex gap-3 overflow-x-auto pb-3">
+            {period.annualFortunes.map((item) => (
+              <div
+                key={item.year}
+                className="w-24 shrink-0 rounded-xl bg-secondary/40 p-3 text-center text-xs leading-6"
               >
-                <Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />
-                <span className="min-w-0 flex-1 text-sm font-semibold leading-6 text-foreground sm:text-base">
-                  {section.title}
-                </span>
-                <ChevronDown
-                  className={cn("size-4 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")}
-                  aria-hidden="true"
-                />
-              </button>
-              {expanded && (
-                <div id={contentId} className="border-t border-border/70 bg-card px-4 py-5 sm:px-12 sm:py-6">
-                  <div className="space-y-3 text-sm leading-7 text-foreground/80 sm:text-[15px]">
-                    {section.body.split("\n\n").map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                  </div>
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>
+                <p>{item.year}년</p>
+                <strong className="text-xl">{item.ganzi}</strong>
+                <p>{item.ganziHangul}</p>
+                <p>
+                  {sajuLabel(item.stemSipsin)}, {sajuLabel(item.branchSipsin)}
+                </p>
+                <p>
+                  {sajuLabel(item.unseong)}, {sajuLabel(item.sinsal)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Section>
   );
 }
-
-export function LuckyDayDetailDialog({ day, open, onOpenChange }: LuckyDayDetailDialogProps) {
-  if (!day) return null;
-  const dateObj = new Date(`${day.date}T00:00:00`);
-  const correctionSign = day.timeCorrection.correctionMinutes > 0 ? "+" : "";
-  const adjustedTime = `${String(day.timeCorrection.adjustedHour).padStart(2, "0")}:${String(day.timeCorrection.adjustedMinute).padStart(2, "0")}`;
-  const locationLabel = day.location.matched ? day.location.label : `${day.location.input} 입력, ${day.location.label} 기준`;
-
+export function LuckyDayDetailDialog({
+  day,
+  searchId,
+  open,
+  onOpenChange,
+}: {
+  day: LuckyDay;
+  searchId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [report, setReport] = React.useState<ReportView | null>(null),
+    [error, setError] = React.useState("");
+  const [retry, setRetry] = React.useState(0),
+    [checkout, setCheckout] = React.useState("");
+  const [paying, setPaying] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setError("");
+    const load = async (attempt: number) => {
+      try {
+        const result = await serviceRequest<ReportView | { pending: true }>(
+          "report",
+          { searchId, candidateId: day.id },
+          controller.signal,
+        );
+        if ("pending" in result) {
+          if (attempt >= 75)
+            throw new Error(
+              "해설을 준비하는 데 시간이 더 필요합니다. 잠시 후 다시 열어 주세요.",
+            );
+          timer = setTimeout(() => void load(attempt + 1), 4000);
+        } else setReport(result);
+      } catch (error) {
+        if (!controller.signal.aborted) setError((error as Error).message);
+      }
+    };
+    void load(0);
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [open, searchId, day.id, retry]);
+  async function pay() {
+    setPaying(true);
+    setCheckout("");
+    try {
+      const result = await serviceRequest<{ status: string; message?: string }>(
+        "checkout",
+        { searchId },
+      );
+      if (result.status === "unlocked") setRetry((value) => value + 1);
+      else setCheckout(result.message || "결제 기능을 준비 중입니다.");
+    } catch (error) {
+      setCheckout((error as Error).message);
+    } finally {
+      setPaying(false);
+    }
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] min-w-0 max-w-none overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-card p-0 shadow-[0_12px_32px_rgba(36,30,34,0.15),0_2px_6px_rgba(36,30,34,0.08)] sm:max-h-[94vh] sm:w-full sm:max-w-[68.75rem] sm:rounded-xl">
-        <div className="min-w-0 space-y-4 p-2.5 pt-12 sm:space-y-5 sm:p-8">
-          <DialogHeader className="items-center text-center">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Badge className="rounded bg-gold-soft px-3 py-2 font-mono text-[10px] tracking-wider text-primary" variant="secondary">Rank {day.rank}</Badge>
-              <Badge className="rounded border border-border bg-background px-3 py-2 font-mono text-[10px] tracking-wide text-primary" variant="secondary">Score {day.score.toFixed(1)}</Badge>
+      <DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-y-auto overflow-x-hidden p-3 pt-12 sm:p-8">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">
+            아이의 가능성을 만나는 사주 보고서
+          </DialogTitle>
+          <DialogDescription>
+            {day.date}, {day.timeLabel}, {day.location.label}
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-sm text-primary">
+          Rank {day.rank}, 대운 평균 기본 점수{" "}
+          {day.scoring.breakdown.daewoonAverageBaseScore.toFixed(1)}점
+        </p>
+        <p className="text-xs leading-6 text-muted-foreground">
+          표시 시간대는 지역 보정을 반영한 실제 한국 표준시입니다. 출산 일정은
+          의료진과 상의해 주세요.
+        </p>
+        <SajuTable day={day} />
+        <Section title="사주 해석">
+          <p className="mb-5 flex items-center gap-2 text-xs text-muted-foreground">
+            <Sparkles className="size-4" />
+            {report
+              ? report.source === "ai"
+                ? "AI 생성 맞춤 해설, 전통 사주를 바탕으로 한 참고 콘텐츠"
+                : "사주 구성에 따른 기본 해설, AI 맞춤 해설 연결을 이용할 수 없어 기본 해설을 제공합니다"
+              : "사주 해석과 전체 대운 해설을 한 번에 준비하고 있어요…"}
+          </p>
+          {error && (
+            <div role="alert" className="mb-4 space-y-3">
+              <p className="text-sm text-destructive">{error}</p>
+              <Button
+                variant="outline"
+                onClick={() => setRetry((value) => value + 1)}
+              >
+                다시 불러오기
+              </Button>
             </div>
-            <DialogTitle className="pt-3 font-serif text-2xl font-bold tracking-tight sm:text-3xl">상세 사주 리포트</DialogTitle>
-            <DialogDescription>{format(dateObj, "yyyy년 M월 d일 (EEE)", { locale: ko })} · {day.timeLabel}</DialogDescription>
-            <p className="text-xs leading-5 text-muted-foreground">
-              {day.gender === "M" ? "남아" : "여아"} · {locationLabel} · 출생지 위치 기준 {correctionSign}{day.timeCorrection.correctionMinutes}분 조정 · 보정 계산시각 {day.timeCorrection.adjustedDate} {adjustedTime}
-            </p>
-            {day.scoring.capped && (
-              <p className="rounded bg-gold-soft px-3 py-1 text-[11px] text-primary">산식 원점수 {day.scoring.rawScore.toFixed(2)}점을 기준에 따라 100점으로 제한했습니다.</p>
-            )}
-          </DialogHeader>
-
-          <SajuTable day={day} />
-          <Interpretation day={day} open={open} />
-          <ElementPentagon day={day} />
-          <StarsTable day={day} />
-          <Yongshin day={day} />
-          <StrengthChart day={day} />
-          <FortuneFlow day={day} open={open} />
-        </div>
+          )}
+          {report && (
+            <div className="space-y-3">
+              {report.sections.map((section, index) => (
+                <details
+                  key={section.id}
+                  open={index === 0}
+                  className="rounded-xl border p-4 sm:p-5"
+                >
+                  <summary className="cursor-pointer font-semibold leading-7">
+                    {section.title}
+                  </summary>
+                  <div className="mt-5">
+                    <Paragraphs body={section.body} />
+                  </div>
+                </details>
+              ))}
+              {!report.unlocked && (
+                <>
+                  <div className="rounded-xl border border-primary/25 bg-primary/5 p-5 text-center">
+                    <LockKeyhole className="mx-auto mb-3 size-6 text-primary" />
+                    <h4 className="font-semibold">
+                      학업, 적성부터 성인이 된 이후의 삶까지
+                    </h4>
+                    <p className="my-3 text-sm leading-7 text-muted-foreground">
+                      이 검색에 포함된 모든 후보의 12개 주제 해설을 함께
+                      열어보세요. 한 번 열린 결과는 이전 결과 조회에서 다시 볼
+                      수 있습니다.
+                    </p>
+                    <Button onClick={pay} disabled={paying}>
+                      {paying
+                        ? "확인 중…"
+                        : `${REPORT_PRICE.toLocaleString("ko-KR")}원으로 전체 해설 열기`}
+                    </Button>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      결제 연결 준비 중, 현재는 실제로 청구되지 않습니다.
+                    </p>
+                    {checkout && (
+                      <p role="status" className="mt-3 text-sm leading-6">
+                        {checkout}
+                      </p>
+                    )}
+                  </div>
+                  {report.lockedSections.map((section) => (
+                    <article key={section.id} className="rounded-xl border p-4">
+                      <h4 className="flex items-center gap-2 text-sm font-semibold">
+                        <LockKeyhole className="size-4" />
+                        {section.title}
+                      </h4>
+                      <div
+                        aria-hidden="true"
+                        className="mt-4 select-none space-y-2 blur-sm"
+                      >
+                        <div className="h-3 w-full rounded bg-muted-foreground/20" />
+                        <div className="h-3 w-11/12 rounded bg-muted-foreground/20" />
+                        <div className="h-3 w-3/4 rounded bg-muted-foreground/20" />
+                      </div>
+                      <p className="sr-only">
+                        결제 후 열람할 수 있는 해설입니다.
+                      </p>
+                    </article>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </Section>
+        <Elements day={day} />
+        <Stars day={day} />
+        <Section title="균형을 돕는 용신">
+          <p className="font-semibold text-primary">
+            {day.yongshin.method === "johu" ? "조후용신" : "억부용신"},{" "}
+            {ELEMENTS[day.yongshin.element]} 기운
+          </p>
+          <p className="mt-3 text-sm leading-7">
+            {day.yongshin.method === "johu"
+              ? "태어난 계절의 치우침을 조절하는 방향을 먼저 살핍니다."
+              : "스스로 버티는 힘과 바깥으로 쓰는 힘의 균형을 살핍니다."}{" "}
+            용신은 부족한 숫자를 채우거나 정해진 색을 쓰면 운이 바뀐다는 뜻이
+            아니라, 사주의 강점을 무리 없이 펼칠 환경을 이해하는 기준입니다.
+          </p>
+        </Section>
+        <Section title="신강과 신약, 힘을 쓰는 방식">
+          <p className="font-semibold text-primary">
+            {day.strength.gradeLabel}
+          </p>
+          <p className="mt-3 text-sm leading-7">
+            {strengthDescription(day)} 신강이 무조건 좋거나 신약이 나쁘다는
+            의미는 아니며, 각자에게 편안한 도전과 지원의 정도가 다르다는
+            관점으로 읽어주세요.
+          </p>
+        </Section>
+        <FortuneFlow day={day} report={report} />
       </DialogContent>
     </Dialog>
   );

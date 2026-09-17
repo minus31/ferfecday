@@ -1,60 +1,48 @@
-# 생일선물 (BirthdayGift) - find the perfect day for your baby.
+# 생일선물, BirthdayGift
 
-- Give the best day your baby. 
+출산 후보 기간의 사주를 비교하고, 아이의 기질과 생애 가능성을 살펴보는 서비스입니다. 출산 일정은 의료진의 판단이 우선입니다.
 
-## PRD
+## 제품 흐름
 
-### 서비스 제공
-- 사주에 근거해서 출생 택일 기능을 제공함. 
-- 홈화면에서, Start-day ~ End-day 를 선택 (최대 3일 기간)
-- 남아/여아와 출산 지역 텍스트를 입력한다.
-- 선택된 기간동안의 길일 Best 3을 계산한다.
-- 길일 카드를 클릭하면 팝업하여 길일에 대한 디테일한 정보를 제공한다.
+1. 과거를 포함한 날짜 범위, 성별, 출산 지역을 선택합니다.
+2. 이메일 계정을 만들거나 로그인하면 서버에서 계산한 Top 10이 계정에 저장됩니다.
+3. 상세 보고서의 사주표, 오행, 신살과 길성, 용신, 신강과 신약, 전체 대운, 사주 해석 첫 장을 무료로 봅니다.
+4. 같은 검색의 모든 후보에 적용되는 3,900원 열람권을 준비했습니다. 실제 PG는 미연동이며 결제나 권한 부여를 가장하지 않습니다.
+5. 이전 결과 조회에서 검색별 결과와 열람 권한을 다시 확인합니다.
 
-### 배포 스택 (v1)
+## 개발과 검증
 
-- 채널 
-    - 웹사이트 
-    - App in toss를 통해 App 형태로도 제공
+Node.js 24 이상이 필요합니다. `.env.example`을 참고해 `.env.local`을 구성합니다. 실제 비밀 값은 커밋하지 않습니다.
 
-- 광고 
-    - Google Admob
-    - Meta
+```sh
+npm ci
+npm run dev
+npm run verify
+npx playwright install chromium
+npm run test:e2e
+npm run build
+npm run check:launch
+```
 
-별도의 Backend 서버 없이, 정적 Next.js 앱으로 시작한다. Toss 미니앱 배포는 `ait build` 산출물을 사용한다.
+`test:e2e`는 로컬 전용 메모리 저장소와 인증 응답을 사용해 웹 흐름을 검사합니다. 운영 API에는 테스트 인증 우회가 없습니다. SQL 검사는 PGlite에서 스키마, 접근 권한, 잠금, 세션, 삭제를 검사합니다. 실제 Supabase, SMTP, OpenAI 호출은 별도 운영 연결 검증이 필요합니다.
 
-### Apps in Toss 3.x
+## 구조
 
-- Node.js 24 이상을 사용한다. 로컬에서는 `nvm use`로 `.nvmrc`의 버전을 적용한다.
-- `npm run build`는 Next.js 정적 export와 AIT 아티팩트 생성을 차례로 실행한다.
-- 보호 API를 연결할 때는 `https://birthdaygift.web.tossmini.com`, `https://birthdaygift.private-web.tossmini.com`을 CORS 허용 Origin에 등록한다.
+| 영역 | 구현 |
+| --- | --- |
+| 웹과 토스 앱 | Next.js App Router 정적 export, `ait build` |
+| 보호 API | Vercel `api/service.ts`, bearer 인증, 요청별 소유권과 열람권 확인 |
+| 계정과 저장 | Supabase Auth, Postgres, 공개 공용 삽화용 Storage |
+| 해설 | 서버에서 후보별 한 번의 Responses API 호출, 12장과 10개 대운 동시 생성, 검증 후 저장 |
+| 이미지 | 1024×1024, 60일주별 공용 이미지, 영구 캐시와 생성 잠금 |
+| 결제 준비 | 검색 단위 주문과 열람권 테이블, 미연동 Toss Payments 준비 응답 |
 
-### AI 사주 해석 연결
+브라우저에 Supabase 서비스 키와 OpenAI 키를 넣지 않습니다. 브라우저가 유료 본문을 직접 조회할 수 없도록 관련 테이블의 RLS와 권한을 잠급니다. 사주 점수와 권한을 클라이언트가 보내는 값을 신뢰하지 않고, 서버가 저장한 검색 후보에서 찾아 사용합니다.
 
-- 사주 해설의 품질 판단, 생성, 테스트, 후속 개선은 [`strategy_saju_explain.md`](./strategy_saju_explain.md)를 기준으로 진행한다.
-- 상세 리포트는 기본적으로 `https://ferfecday.vercel.app/api/saju-report` 보호 API에 사주 데이터를 POST하며, `NEXT_PUBLIC_SAJU_REPORT_API_URL`로 다른 주소를 지정할 수 있다.
-- 대운 선택 해설도 별도 API나 모델을 추가하지 않고 전체 사주 해설과 동일한 `NEXT_PUBLIC_SAJU_REPORT_API_URL`, `gpt-5.5`, `sections` 응답 계약을 사용한다.
-- 대운 요청은 `task: "daewoon_child_fortune"`으로 구분하며, `sections`의 첫 항목 `body`에 정확히 2문단의 한국어 해설을 반환한다. 연령 구간에 따라 유년기, 청소년기, 성인기 주체와 생활 과제를 다르게 쓴다.
-- 요청 모델은 `gpt-5.5`이며 응답은 사용자 친화적인 제목과 본문을 가진 지정 순서의 `sections` 배열 12개를 반환한다. 또래 관계와 별도로 성인기 친밀한 관계를 다루고, 건강은 질환 예측이 아닌 활동과 회복 리듬으로 제한한다. 각 항목은 `id`, `icon`, `title`, `body`를 가지며, 본문은 240~650자, 5~8문장, 2문단 기준을 통과해야 한다.
-- OpenAI API 키는 정적 앱에 넣지 않는다. 서버 측 Vercel Function에서만 사용하며, 키가 없는 Vercel 배포에서는 자동 OIDC 인증을 사용한다.
-- 운영 Vercel Function은 자동 제공되는 `VERCEL_OIDC_TOKEN`으로 AI Gateway의 `openai/gpt-5.5`를 호출한다. `OPENAI_API_KEY`가 설정된 환경에서는 OpenAI Responses API를 직접 사용한다.
-- 로컬 오프라인 상태이거나 호출에 실패하면 화면은 계산된 사주 데이터로 만든 기본 해설을 사용한다.
+해설은 일반 장 550~1,300자, 학업과 직업 900~1,700자, 대운 550~1,100자, 3~4문단을 목표로 요청합니다. AI 요청 또는 품질 검사 실패 시 서버의 사주 근거 기반 기본 해설을 저장하며 화면에서 기본 해설임을 구분합니다. 생성물과 기본 해설 모두 내부 지수, 퍼센트, 성인기를 아기로 묘사하는 표현을 검사합니다.
 
-| Layer | 선택 | 비고 |
-| --- | --- | --- |
-| Frontend | Next.js App Router static export | 브라우저 내 후보 생성 및 scoring |
-| Mini app | Apps in Toss | `@apps-in-toss/web-framework`, `ait build` |
-| Hosting / CDN | Vercel 또는 Toss 배포 | 웹/미니앱 채널 병행 |
-| Database | Supabase Postgres | RLS(Row Level Security) 로 권한 제어 |
-| Auth | Supabase Auth | 이메일/소셜 로그인, JWT 기반 세션 |
-| Storage | Supabase Storage | 이미지 등 파일 업로드 |
-| Realtime | Supabase Realtime | 필요 시 구독 기반 실시간 업데이트 |
+## 실제 출시 연결
 
-### 데이터 흐름
+[출시 연결 체크리스트](docs/LAUNCH.md)에 프로젝트 생성, 인증 설정, SQL 적용, 테스트 계정, 이미지와 AI, 법적 고지, PG 후속 작업을 정리했습니다. [PROGRESS.md](PROGRESS.md)에 단계별 구현과 검증 기록을 남깁니다.
 
-- Client (Next.js static export)에서 후보 생성 및 scoring 수행
-- 향후 민감하거나 서버에서만 처리해야 하는 로직은 별도 API/Edge Function으로 이관
-- Vercel 환경 변수에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 관리
-
-### 향후 확장 여지
-- 무거운 작업은 Supabase Edge Functions 또는 Vercel Cron / Queue 로 이관
+현재 전용 Supabase 조직 선택, 운영자와 개인정보 보호책임자 정보, 실제 API 키는 외부 설정 대기 항목입니다. 정책 페이지는 해당 정보를 확정하기 전까지 출시 준비안입니다. `check:launch`는 누락 설정이 있으면 실패하도록 만들어져 있습니다.

@@ -32,11 +32,11 @@ const response = calculateLuckyDays({
 });
 
 assert.equal(response.candidates, 36);
-assert.equal(response.results.length, 3);
+assert.equal(response.results.length, 10);
 const friendlyTitleSignatures = new Set<string>();
 
 for (const day of response.results) {
-  assert.match(day.timeLabel, /^\d{2}:00~\d{2}:00 [가-힣]+시$/);
+  assert.match(day.timeLabel, /^(?:전날 )?\d{2}:\d{2}~(?:다음날 )?\d{2}:\d{2} [가-힣]+시$/);
   assert.ok(day.annualFortunes.length >= 100, "전체 대운 선택에 필요한 세운이 부족합니다.");
   const babySummary = buildBabySummary(day);
   assert.equal((babySummary.match(/[.!?](?:\s|$)/g) ?? []).length, 3, "아이 기질 요약은 3문장이어야 합니다.");

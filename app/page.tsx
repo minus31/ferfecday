@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { Compass, HeartHandshake, Sparkles, Star } from "lucide-react";
@@ -28,8 +29,8 @@ export default function HomePage() {
   const router = useRouter();
   const [range, setRange] = React.useState<DateRange | undefined>();
   const [gender, setGender] = React.useState<BirthGender>(DEFAULT_BIRTH_GENDER);
-  const [location, setLocation] = React.useState<BirthLocation | null>(
-    () => getBirthLocation(DEFAULT_BIRTH_LOCATION_ID)
+  const [location, setLocation] = React.useState<BirthLocation | null>(() =>
+    getBirthLocation(DEFAULT_BIRTH_LOCATION_ID),
   );
 
   const canSubmit = Boolean(range?.from && range?.to && location);
@@ -42,7 +43,7 @@ export default function HomePage() {
       gender,
       location: location.id,
     });
-    router.push(`/results?${params.toString()}`);
+    router.push(`/account?mode=signup&${params.toString()}`);
   };
 
   return (
@@ -53,7 +54,7 @@ export default function HomePage() {
           <div className="surface-card overflow-hidden p-6 sm:p-8 lg:p-10">
             <div className="eyebrow">
               <Sparkles className="size-3.5" />
-              생일선물 · BirthdayGift
+              생일선물, BirthdayGift
             </div>
             <div className="mt-6 space-y-4">
               <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
@@ -70,11 +71,16 @@ export default function HomePage() {
               {highlights.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.label} className="soft-panel flex items-center gap-3">
+                  <div
+                    key={item.label}
+                    className="soft-panel flex items-center gap-3"
+                  >
                     <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <Icon className="size-4" />
                     </div>
-                    <p className="text-sm font-medium text-foreground">{item.label}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {item.label}
+                    </p>
                   </div>
                 );
               })}
@@ -106,13 +112,21 @@ export default function HomePage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">출산 지역</p>
+                <p className="text-sm font-semibold text-foreground">
+                  출산 지역
+                </p>
                 <LocationCombobox value={location} onChange={setLocation} />
                 <p className="text-xs leading-5 text-muted-foreground">
-                  검색 결과에서 지역을 선택해 주세요. 선택한 지역의 내부 좌표로 동경 135도 기준시와의 경도 차이를 보정합니다.
+                  검색 결과에서 지역을 선택해 주세요. 선택한 지역의 내부 좌표로
+                  동경 135도 기준시와의 경도 차이를 보정합니다.
                 </p>
               </div>
 
+              <p className="rounded-xl bg-secondary/60 p-3 text-xs leading-6 text-muted-foreground">
+                해설과 상징 이미지는 생성형 AI로 작성됩니다. 사주는 미래를
+                보장하지 않으며, 출산 일정은 의료진과 먼저 상의해 주세요. 다음
+                단계에서 계정을 만들면 검색 결과를 다시 볼 수 있습니다.
+              </p>
               <Button
                 size="xl"
                 className="w-full"
@@ -120,6 +134,9 @@ export default function HomePage() {
                 onClick={handleSubmit}
               >
                 길일 찾기
+              </Button>
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/history">이전 결과 조회</Link>
               </Button>
             </div>
           </div>

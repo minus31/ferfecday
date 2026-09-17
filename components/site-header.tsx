@@ -15,8 +15,8 @@ export function SiteHeader() {
           <Link href="/" className="transition-colors hover:text-foreground">
             홈
           </Link>
-          <Link href="#" className="transition-colors hover:text-foreground">
-            서비스 소개
+          <Link href="/history" className="transition-colors hover:text-foreground">
+            이전 결과 조회
           </Link>
         </nav>
       </div>

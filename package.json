@@ -18,9 +18,19 @@
     "verify:saju-api": "tsx scripts/verify-saju-api.ts",
     "verify:strength-score": "tsx scripts/verify-strength-score.ts",
     "verify:yongshin": "tsx scripts/verify-yongshin.ts",
+    "verify:product-ranking": "tsx scripts/verify-product-ranking.ts",
+    "verify:product-content": "tsx scripts/verify-product-content.ts",
+    "verify:product-sql": "tsx scripts/verify-product-sql.ts",
+    "verify": "tsc --noEmit && npm run verify:product-ranking && npm run verify:strength-score && npm run verify:yongshin && npm run verify:detail-report && npm run verify:daewoon-ai && npm run verify:product-content && npm run verify:saju-api && npm run verify:product-sql",
+    "test:e2e": "playwright test",
+    "check:launch": "tsx scripts/check-launch.ts",
+    "setup:test-account": "tsx scripts/setup-test-account.ts",
     "start": "next start",
-    "lint": "next lint",
-    "deploy": "ait deploy"
+    "lint": "tsc --noEmit",
+    "deploy": "npm run check:launch && ait deploy"
+  },
+  "overrides": {
+    "postcss": "^8.5.28"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^3.1.1",
@@ -29,6 +39,7 @@
     "@radix-ui/react-popover": "^1.1.4",
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.1",
+    "@supabase/supabase-js": "^2.116.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -42,6 +53,8 @@
   },
   "devDependencies": {
     "@apps-in-toss/devtools": "^3.1.1",
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

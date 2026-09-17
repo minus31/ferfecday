@@ -2,7 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/saju-report.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
+    },
+    "api/service.ts": {
+      "maxDuration": 300
     }
   }
 }

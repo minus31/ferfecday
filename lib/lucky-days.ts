@@ -152,6 +152,33 @@ function serializeLocation(location: BirthLocation): LuckyDay["location"] {
   };
 }
 
+/** 태양시 시진 경계를 병원에서 사용하는 한국 표준시로 환산한다. */
+export function formatBirthTimeWindow(hour: number, correctionMinutes: number, branch: string) {
+  const solarMinutes = hour * 60 + correctionMinutes;
+  const solarStart = Math.floor((solarMinutes + 60) / 120) * 120 - 60;
+  const wallStart = solarStart - correctionMinutes;
+  const formatMinute = (value: number) => {
+    const dayOffset = Math.floor(value / 1440);
+    const normalized = ((value % 1440) + 1440) % 1440;
+    const prefix = dayOffset < 0 ? "전날 " : dayOffset > 0 ? "다음날 " : "";
+    return `${prefix}${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+  };
+  return `${formatMinute(wallStart)}~${formatMinute(wallStart + 120)} ${BRANCH_HANGUL[branch]}시`;
+}
+
+/** 점수순을 유지하되 같은 일주 5연속 뒤에는 다른 일주의 최상위 후보를 우선한다. */
+export function diversifyRanking<T extends { dayPillar: string }>(sorted: T[], limit = 10): T[] {
+  const remaining = [...sorted];
+  const selected: T[] = [];
+  while (remaining.length && selected.length < limit) {
+    const last = selected.at(-1)?.dayPillar;
+    const sameRun = selected.length >= 5 && selected.slice(-5).every((item) => item.dayPillar === last);
+    const alternative = sameRun ? remaining.findIndex((item) => item.dayPillar !== last) : 0;
+    selected.push(remaining.splice(alternative >= 0 ? alternative : 0, 1)[0]);
+  }
+  return selected;
+}
+
 function scoreSaju(result: SajuResult) {
   const elementQi = calculateElementQi(result);
   const strength = calculateStrengthIndex(result, elementQi);
@@ -229,7 +256,7 @@ function serializeCandidate(
     date,
     hour,
     minute: 0,
-    timeLabel,
+    timeLabel: formatBirthTimeWindow(hour, timeCorrection.correctionMinutes, result.pillars[0].pillar.branch),
     gender,
     location: serializeLocation(location),
     timeCorrection,
@@ -362,15 +389,14 @@ export function calculateLuckyDays({
     })
   );
 
-  const results = candidates
+  const results = diversifyRanking(candidates
     .sort(
       (a, b) =>
         b.score - a.score ||
         b.scoring.rawScore - a.scoring.rawScore ||
         a.date.localeCompare(b.date) ||
         a.hour - b.hour
-    )
-    .slice(0, 3)
+    ))
     .map((candidate, index) => ({
       ...candidate,
       rank: index + 1,
