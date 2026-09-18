@@ -2,6 +2,11 @@
 import * as React from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getBrowserAuth } from "@/lib/supabase-browser";
+import {
+  getLocalTestAccountSession,
+  isLocalTestAccountEnabled,
+  onLocalTestAccountChange,
+} from "local-test-account-runtime";
 
 const AccountContext = React.createContext<{
   session: Session | null;
@@ -15,6 +20,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     error: null as string | null,
   });
   React.useEffect(() => {
+    if (isLocalTestAccountEnabled()) {
+      const update = () =>
+        setState({
+          session: getLocalTestAccountSession(),
+          ready: true,
+          error: null,
+        });
+      update();
+      return onLocalTestAccountChange(update);
+    }
     let mounted = true;
     let changed = false;
     try {

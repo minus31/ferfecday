@@ -23,6 +23,7 @@
     "verify:product-sql": "tsx scripts/verify-product-sql.ts",
     "verify": "tsc --noEmit && npm run verify:product-ranking && npm run verify:strength-score && npm run verify:yongshin && npm run verify:detail-report && npm run verify:daewoon-ai && npm run verify:product-content && npm run verify:saju-api && npm run verify:product-sql",
     "test:e2e": "playwright test",
+    "test:local-account": "playwright test --config=playwright.local-account.config.ts",
     "check:launch": "tsx scripts/check-launch.ts",
     "setup:test-account": "tsx scripts/setup-test-account.ts",
     "start": "next start",

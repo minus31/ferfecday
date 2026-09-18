@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "@/components/account-provider";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { getBrowserAuth, serviceRequest } from "@/lib/supabase-browser";
+import { serviceRequest, signOutAccount } from "@/lib/supabase-browser";
 import { SUPPORT_EMAIL, type SearchInput } from "@/lib/product";
 type HistoryRow = {
   id: string;
@@ -66,7 +66,7 @@ export default function HistoryPage() {
     setError("");
     try {
       await serviceRequest("account-delete", { confirm: "DELETE" });
-      await getBrowserAuth().auth.signOut({ scope: "local" });
+      await signOutAccount();
       router.replace("/");
     } catch (error) {
       setError((error as Error).message);
@@ -95,12 +95,14 @@ export default function HistoryPage() {
               <Button
                 variant="outline"
                 onClick={async () => {
-                  const { error } = await getBrowserAuth().auth.signOut();
-                  if (error)
+                  try {
+                    await signOutAccount();
+                    router.replace("/account");
+                  } catch {
                     setError(
                       "로그아웃을 완료하지 못했습니다. 다시 시도해 주세요.",
                     );
-                  else router.replace("/account");
+                  }
                 }}
               >
                 로그아웃

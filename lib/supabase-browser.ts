@@ -1,4 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  hasLocalTestAccountSession,
+  localTestAccountRequest,
+  signOutLocalTestAccount,
+} from "local-test-account-runtime";
 let client: SupabaseClient | null = null;
 export function getBrowserAuth() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,6 +36,8 @@ export async function serviceRequest<T>(
   body: Record<string, unknown> = {},
   signal?: AbortSignal,
 ): Promise<T> {
+  if (hasLocalTestAccountSession())
+    return localTestAccountRequest<T>(action, body);
   const auth = getBrowserAuth();
   const { data, error } = await auth.auth.getSession();
   if (error || !data.session)
@@ -53,4 +60,13 @@ export async function serviceRequest<T>(
     throw new Error(result.error || "요청을 처리하지 못했습니다.");
   }
   return result as T;
+}
+
+export async function signOutAccount() {
+  if (hasLocalTestAccountSession()) {
+    signOutLocalTestAccount();
+    return;
+  }
+  const { error } = await getBrowserAuth().auth.signOut();
+  if (error) throw error;
 }

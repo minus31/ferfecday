@@ -27,6 +27,7 @@ export default defineConfig({
         NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:8788",
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-publishable-key",
         NEXT_PUBLIC_SERVICE_API_URL: "http://127.0.0.1:8788/api/service",
+        NEXT_PUBLIC_LOCAL_TEST_ACCOUNT: "false",
       },
     },
   ],

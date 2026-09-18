@@ -26,16 +26,18 @@ npm run check:launch
 
 `test:e2e`는 로컬 전용 메모리 저장소와 인증 응답을 사용해 웹 흐름을 검사합니다. 운영 API에는 테스트 인증 우회가 없습니다. SQL 검사는 PGlite에서 스키마, 접근 권한, 잠금, 세션, 삭제를 검사합니다. 실제 Supabase, SMTP, OpenAI 호출은 별도 운영 연결 검증이 필요합니다.
 
+Supabase 연결 전에는 `.env.local`에서 `NEXT_PUBLIC_LOCAL_TEST_ACCOUNT=true`를 설정하고 기존 로그인 화면에서 `brith@day.com` / `1234`를 사용합니다. 세션과 검색 기록은 해당 브라우저에만 저장되며, `npm run test:local-account`로 이 흐름을 검사합니다. 공개 출시 검사에서는 로컬 테스트 계정을 허용하지 않습니다.
+
 ## 구조
 
-| 영역 | 구현 |
-| --- | --- |
-| 웹과 토스 앱 | Next.js App Router 정적 export, `ait build` |
-| 보호 API | Vercel `api/service.ts`, bearer 인증, 요청별 소유권과 열람권 확인 |
-| 계정과 저장 | Supabase Auth, Postgres, 공개 공용 삽화용 Storage |
-| 해설 | 서버에서 후보별 한 번의 Responses API 호출, 12장과 10개 대운 동시 생성, 검증 후 저장 |
-| 이미지 | 1024×1024, 60일주별 공용 이미지, 영구 캐시와 생성 잠금 |
-| 결제 준비 | 검색 단위 주문과 열람권 테이블, 미연동 Toss Payments 준비 응답 |
+| 영역         | 구현                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------ |
+| 웹과 토스 앱 | Next.js App Router 정적 export, `ait build`                                          |
+| 보호 API     | Vercel `api/service.ts`, bearer 인증, 요청별 소유권과 열람권 확인                    |
+| 계정과 저장  | Supabase Auth, Postgres, 공개 공용 삽화용 Storage                                    |
+| 해설         | 서버에서 후보별 한 번의 Responses API 호출, 12장과 10개 대운 동시 생성, 검증 후 저장 |
+| 이미지       | 1024×1024, 60일주별 공용 이미지, 영구 캐시와 생성 잠금                               |
+| 결제 준비    | 검색 단위 주문과 열람권 테이블, 미연동 Toss Payments 준비 응답                       |
 
 브라우저에 Supabase 서비스 키와 OpenAI 키를 넣지 않습니다. 브라우저가 유료 본문을 직접 조회할 수 없도록 관련 테이블의 RLS와 권한을 잠급니다. 사주 점수와 권한을 클라이언트가 보내는 값을 신뢰하지 않고, 서버가 저장한 검색 후보에서 찾아 사용합니다.
 

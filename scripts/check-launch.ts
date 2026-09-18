@@ -11,6 +11,8 @@ const required = [
   "NEXT_PUBLIC_SUPABASE_COUNTRY",
 ];
 const missing = required.filter((key) => !process.env[key]?.trim());
+if (process.env.NEXT_PUBLIC_LOCAL_TEST_ACCOUNT === "true")
+  missing.push("NEXT_PUBLIC_LOCAL_TEST_ACCOUNT (공개 출시 전 false로 변경)");
 if (process.env.PRIVACY_REVIEW_COMPLETE !== "true")
   missing.push("PRIVACY_REVIEW_COMPLETE (위탁, 국가, 보유기간 실제 계약 검토)");
 if (

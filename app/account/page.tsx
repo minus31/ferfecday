@@ -9,6 +9,7 @@ import {
   getBrowserAuth,
   getServiceEndpoint,
   serviceRequest,
+  signOutAccount,
 } from "@/lib/supabase-browser";
 import {
   POLICY_VERSION,
@@ -16,14 +17,25 @@ import {
   type SearchInput,
   type SearchView,
 } from "@/lib/product";
+import {
+  authenticateLocalTestAccount,
+  getLocalTestAccountCredentials,
+  isLocalTestAccountEnabled,
+} from "local-test-account-runtime";
 
 function AccountForm() {
   const params = useSearchParams(),
     router = useRouter();
   const { session, ready, error: connectionError } = useAccount();
-  const [signup, setSignup] = React.useState(params.get("mode") === "signup");
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
+  const localTestAccount = isLocalTestAccountEnabled();
+  const localCredentials = getLocalTestAccountCredentials();
+  const [signup, setSignup] = React.useState(
+    params.get("mode") === "signup" && !localTestAccount,
+  );
+  const [email, setEmail] = React.useState(localCredentials?.email || "");
+  const [password, setPassword] = React.useState(
+    localCredentials?.password || "",
+  );
   const [consent, setConsent] = React.useState(false);
   const [transfer, setTransfer] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -81,57 +93,62 @@ function AccountForm() {
         await proceed();
         return;
       }
-      const client = getBrowserAuth();
       const normalizedEmail = email.trim().toLowerCase();
-      if (normalizedEmail === "brith@day.com" && password === "1234") {
-        const response = await fetch(getServiceEndpoint(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "demo-login",
+      if (localTestAccount) {
+        if (!authenticateLocalTestAccount(normalizedEmail, password))
+          throw new Error("로컬 테스트 계정 정보를 확인해 주세요.");
+      } else {
+        const client = getBrowserAuth();
+        if (normalizedEmail === "brith@day.com" && password === "1234") {
+          const response = await fetch(getServiceEndpoint(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "demo-login",
+              email: normalizedEmail,
+              password,
+            }),
+          });
+          const tokens = await response.json();
+          if (!response.ok)
+            throw new Error(
+              tokens.error || "테스트 계정에 로그인할 수 없습니다.",
+            );
+          const { error } = await client.auth.setSession(tokens);
+          if (error) throw error;
+        } else if (signup) {
+          if (!consent || !transfer)
+            throw new Error("필수 동의 항목을 확인해 주세요.");
+          if (password.length < 8)
+            throw new Error("비밀번호는 8자 이상 입력해 주세요.");
+          const { data, error } = await client.auth.signUp({
             email: normalizedEmail,
             password,
-          }),
-        });
-        const tokens = await response.json();
-        if (!response.ok)
-          throw new Error(
-            tokens.error || "테스트 계정에 로그인할 수 없습니다.",
-          );
-        const { error } = await client.auth.setSession(tokens);
-        if (error) throw error;
-      } else if (signup) {
-        if (!consent || !transfer)
-          throw new Error("필수 동의 항목을 확인해 주세요.");
-        if (password.length < 8)
-          throw new Error("비밀번호는 8자 이상 입력해 주세요.");
-        const { data, error } = await client.auth.signUp({
-          email: normalizedEmail,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/account?verified=1`,
-          },
-        });
-        if (error)
-          throw new Error(
-            "가입을 완료하지 못했습니다. 이메일과 비밀번호를 확인하거나 로그인해 주세요.",
-          );
-        if (!data.session) {
-          setMessage(
-            "이메일로 보낸 확인 링크를 열어 주세요. 이미 가입한 이메일이라면 로그인해 주세요. 확인 후 이 화면에서 검색을 이어갈 수 있습니다.",
-          );
-          setPassword("");
-          return;
+            options: {
+              emailRedirectTo: `${window.location.origin}/account?verified=1`,
+            },
+          });
+          if (error)
+            throw new Error(
+              "가입을 완료하지 못했습니다. 이메일과 비밀번호를 확인하거나 로그인해 주세요.",
+            );
+          if (!data.session) {
+            setMessage(
+              "이메일로 보낸 확인 링크를 열어 주세요. 이미 가입한 이메일이라면 로그인해 주세요. 확인 후 이 화면에서 검색을 이어갈 수 있습니다.",
+            );
+            setPassword("");
+            return;
+          }
+        } else {
+          const { error } = await client.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
+          if (error)
+            throw new Error(
+              "이메일 또는 비밀번호를 확인해 주세요. 가입 시 보낸 이메일 인증도 완료해 주세요.",
+            );
         }
-      } else {
-        const { error } = await client.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
-        });
-        if (error)
-          throw new Error(
-            "이메일 또는 비밀번호를 확인해 주세요. 가입 시 보낸 이메일 인증도 완료해 주세요.",
-          );
       }
       setPassword("");
       if (signup) await serviceRequest("consent", { version: POLICY_VERSION });
@@ -300,7 +317,7 @@ function AccountForm() {
           <button
             className="text-sm underline"
             onClick={async () => {
-              await getBrowserAuth().auth.signOut();
+              await signOutAccount();
               setMessage("");
             }}
           >
