@@ -45,7 +45,7 @@
 ## Current Behavior Notes
 
 - Date ranges are limited to 3 days.
-- Dates before the current date are disabled in the calendar.
+- Past dates can be selected in the calendar.
 - Clicking an unlocked lucky-day card opens a detail dialog.
 - Result data is computed from `@orrery/core` and local scoring modules.
 
