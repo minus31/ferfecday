@@ -8,7 +8,8 @@
 - [완료] 이미지 실패 원인을 설정 누락, 생성 API 오류, 저장 또는 네트워크 오류로 구분해 서버 로그와 화면에 연결했다. 키 누락 응답, 기존 재사용, 지연 표시, 재시도 코드에 대한 로컬 검사를 수행했다. 실제 이미지 생성과 버킷 저장 검증은 OpenAI key 설정 후 가능하다.
 - [검증] `npm run verify` 통과. 실제 ServiceAX 인증, 실시간 생성, SMTP, 토스 인앱 결제는 아직 검증하지 못했다. 운영자 및 보호책임자 정보와 개인정보 검토가 없어 공개 출시 조건은 미충족이다.
 - [검증] `npm ci` 성공, 새로 보고된 Next, sharp, source-map-js 취약점은 잠금 파일 업데이트 후 `npm audit` 0건. Node 24에서 `npm run verify`, 데스크톱, 모바일 Playwright 6건, 웹과 `birthdaygift.ait` 빌드 통과. 로컬 `npm run check:launch`는 운영 비밀값과 법적 정보가 없는 상태를 정상적으로 차단했다.
-- [검증] `NEXT_PUBLIC_LOCAL_TEST_ACCOUNT=false`를 강제한 웹, 토스 빌드도 통과했다. 로컬 테스트 함수는 이 빌드에서 항상 비활성화되지만 일부 관련 문자열은 번들에 남아 있어, 출시 전 제거 여부와 운영 환경 빌드를 추가 확인한다. 산출물은 배포하지 않았다.
+- [검증] `NEXT_PUBLIC_LOCAL_TEST_ACCOUNT=false`를 강제한 웹, 토스 빌드도 통과했다. 로컬 테스트 함수는 이 빌드에서 항상 비활성화되지만 일부 관련 문자열은 번들에 남아 있어, 출시 전 제거 여부와 운영 환경 빌드를 추가 확인한다. 로컬에서 만든 토스 아티팩트는 배포하지 않았다.
+- [배포] `e8000d7`을 `release/serviceax-launch`에 push했고 Vercel Preview 빌드가 Ready가 됐다. Preview URL은 Vercel SSO로 보호되며 Preview 환경 변수는 아직 없다. Production 배포와 토스 미니앱 배포는 하지 않았다.
 
 ## 2026-10-06 콘텐츠 개선
 

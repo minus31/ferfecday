@@ -24,7 +24,7 @@
 
 ## 3. 운영 API와 OpenAI 연결
 
-- [ ] Vercel에 `/api/service` 함수를 배포하고 `NEXT_PUBLIC_SERVICE_API_URL`을 연결한다.
+- [ ] Vercel Preview 빌드는 Ready이지만 Preview 환경 변수가 없어 기능 검증 전이다. Production의 `/api/service` 배포와 `NEXT_PUBLIC_SERVICE_API_URL` 실검증을 완료한다.
 - [x] 현재 웹, 토스 공개 앱, 토스 비공개 앱 주소를 Vercel 운영 환경의 `ALLOWED_ORIGINS`에 등록했다. 토스 앱 ID 확정 후 주소를 재검증한다.
 - [ ] 서버에 `OPENAI_API_KEY`, `OPENAI_SAJU_MODEL`, `OPENAI_IMAGE_MODEL`을 설정한다.
 - [ ] OpenAI 결제 수단, 사용 한도, 모델 사용 권한, 요청 제한을 설정한다.
