@@ -4,7 +4,7 @@ import type { FriendlyReportSection } from "./saju/integrated-report";
 export const SUPPORT_EMAIL = "rouf____@naver.com";
 export const REPORT_PRICE = 3900;
 export const POLICY_VERSION = "2026-09-17";
-export const REPORT_VERSION = "product-v4";
+export const REPORT_VERSION = "product-v5";
 export const SECTION_TOPICS = [
   ["core", "sparkles", "타고난 기질과 삶의 바탕"],
   ["inner-pace", "heart", "마음의 속도와 자신감"],
@@ -61,6 +61,7 @@ export interface ReportView extends ReportBundle {
 export interface ImageResult {
   url: string | null;
   status: "ready" | "pending" | "unavailable";
+  reason?: "configuration" | "generation" | "storage-or-network";
 }
 
 /** 유료 본문은 숨기는 CSS와 무관하게 응답에서 제거한다. 대운은 요청대로 무료 공개한다. */

@@ -11,11 +11,11 @@ Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLI
 ## 1. 전용 Supabase
 
 - 사용자 지정 조직에 `birthdaygift` 전용 프로젝트를 생성합니다. 기존 타 서비스 프로젝트는 사용하지 않습니다. 권장 저장 지역은 서울이며, 실제 프로젝트 선택에 맞춰 방침의 국가와 위탁 조건을 확정합니다.
-- `supabase/migrations/202609170001_product.sql`을 SQL Editor 또는 Supabase CLI로 적용합니다. 새로운 전용 프로젝트를 위한 초기 마이그레이션이며 기존 테이블을 삭제하지 않습니다.
-- `.env.example`의 Supabase URL과 공개 anon/publishable 키를 빌드 환경에, service_role 키는 Vercel 서버 환경에만 설정합니다.
+- `supabase/migrations/20261007231004_product_initial.sql`과 `20261007231117_product_hardening.sql`이 ServiceAX에 적용되어 있습니다. 원격 마이그레이션 버전에 맞춘 파일이므로 다른 프로젝트에는 CLI로 순서대로 적용합니다.
+- `.env.example`의 Supabase URL과 공개 publishable 키를 빌드 환경에, secret 키는 Vercel 서버 환경에만 설정합니다. 기존 anon, service_role 키는 코드에서 이전 설정 호환 용도로만 인식합니다.
 - 이메일 가입, 이메일 확인을 활성화하고 비밀번호 최소 길이를 8자 이상으로 설정합니다. SMTP 발신 도메인, 템플릿, 발송 한도, 스팸 폴더 도착 여부를 검증합니다.
 - Auth Site URL은 실제 웹 도메인, redirect allow list에는 웹과 토스의 `/account` 경로를 정확히 등록합니다. PKCE는 확인 링크를 가입한 브라우저에서 여는 것이 기본입니다. 다른 기기에서 확인했다면 원래 화면으로 돌아와 로그인합니다.
-- 액세스 토큰은 짧게, 권장 15분, 갱신 토큰 회전과 재사용 탐지를 켭니다. 서버는 JWT 검증뿐 아니라 `auth.sessions` 존재와 생성 후 30일 이내 조건을 매번 검사합니다. 로그아웃된 세션과 만료된 세션은 거절합니다.
+- 현재 ServiceAX의 액세스 토큰은 1시간으로 설정돼 있으며 갱신 토큰 재사용 탐지가 켜져 있습니다. 서버는 JWT 검증뿐 아니라 `auth.sessions` 존재와 생성 후 30일 이내 조건을 매번 검사합니다. 로그아웃된 세션과 만료된 세션은 거절합니다.
 - 저장 데이터 테이블은 anon/authenticated 직접 읽기, 쓰기가 금지되어야 합니다. `service_role`만 접근합니다. 공용 삽화 버킷은 공개 읽기, 업로드는 서버 전용입니다.
 - 실제 두 계정으로 다른 계정의 검색 ID 접근이 404인지, 갱신 후 재조회가 되는지, 로그아웃 이전 토큰이 401인지, 탈퇴 후 기록이 삭제되는지 확인합니다.
 
@@ -50,16 +50,16 @@ Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLI
 
 확인한 공식 근거: [AI기본법](https://www.law.go.kr/LSW/lsInfoP.do?ancYnChk=&chrClsCd=010202&efYd=20260122&lsiSeq=282791&urlMode=lsInfoP)의 투명성 의무, [개인정보 보호법 국외이전](https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1029331979), [OpenAI API 데이터 처리](https://platform.openai.com/docs/guides/your-data), [Supabase 세션](https://supabase.com/docs/guides/auth/sessions), [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security). 사용자 제공 과태료 요약을 그대로 법률 보증으로 사용하지 않습니다.
 
-## 5. 다음 세션: PG 실제 연결
+## 5. 토스 인앱 결제, 별도 PG 제외
 
-현재 버튼은 Toss Payments용 주문을 준비하고 `not-configured`를 반환합니다. 브라우저에서 결제 성공을 흉내 내거나 열람권을 부여하는 엔드포인트는 없습니다.
+현재 버튼은 주문만 준비하고 `not-configured`를 반환합니다. 아직 실제 청구 또는 열람권 부여는 일어나지 않습니다. 별도 웹 PG는 범위에서 제외하지만 토스 미니앱의 디지털 콘텐츠 인앱 결제는 출시 전에 연동해야 합니다.
 
-- PG 계약과 채널 정책을 먼저 확인합니다. 토스 미니앱에서 외부 PG 사용이 허용되는지, 인앱 결제 정책이 별도로 적용되는지도 출시 채널의 최신 문서로 확인해야 합니다.
-- `birthdaygift_orders`의 서버 생성 주문 ID, 서버 고정 3,900원, KRW를 사용합니다. 클라이언트의 금액과 `paid=true` 값을 신뢰하지 않습니다.
-- 승인 API에서 PG 서버와 금액, 주문, 소유자를 검증한 뒤 트랜잭션으로 주문 상태와 검색 단위 `birthdaygift_entitlements`를 함께 기록합니다. 웹훅 서명, 중복 승인, 취소, 환불과 열람권 회수도 처리합니다.
+- 앱인토스 콘솔에서 사업자, 정산 심사, 단건 디지털 상품 SKU, 판매가를 먼저 확정합니다. 토스 문서의 공급가 10원 단위와 부가세 자동 합산 때문에 정확히 3,900원이 가능한지는 콘솔에서 재확인해야 합니다.
+- 미니앱에는 `IAP.createOneTimePurchaseOrder`를 연결하고 브라우저에서는 토스 SDK를 호출하지 않습니다. 결제 콜백의 주문 ID만으로 유료 본문을 열지 않습니다.
+- 토스 서버 주문 상태 API에 mTLS 인증서를 사용해 SKU, 상태, 금액을 검증한 뒤 주문과 검색 단위 `birthdaygift_entitlements`를 멱등적으로 기록합니다. 중단, 재시도, 환불과 열람권 회수도 처리합니다.
 - 판매자 필수 정보, 공급 시점, 청약철회와 디지털 콘텐츠 관련 고지, 환불 절차를 결제 전에 제공합니다.
 - 승인, 환불 주문은 탈퇴 시 계정 연결만 끊고 보존하도록 테이블을 준비했습니다. 실제 판매 개시 전 법정 보유기간과 기간 만료 삭제 작업, 분쟁 보존 예외를 구현합니다. 미결제 주문과 검색, 보고서는 탈퇴 시 삭제됩니다.
-- 서로 다른 두 검색, 같은 검색의 열 후보, 재로그인, 취소와 환불을 실제 PG 테스트 모드로 검증한 뒤 유료 판매를 켭니다.
+- 서로 다른 두 검색, 같은 검색의 열 후보, 재로그인, 취소와 환불을 실제 토스 테스트 앱에서 검증한 뒤 유료 판매를 켭니다.
 
 ## 검증 범위
 

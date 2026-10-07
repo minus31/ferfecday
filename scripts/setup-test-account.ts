@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { existsSync } from "node:fs";
 if (existsSync(".env.local")) process.loadEnvFile?.(".env.local");
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY,
+const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
   password = process.env.TEST_ACCOUNT_PASSWORD;
 if (!url || !key || !password || password.length < 24 || password === "1234")
   throw new Error(

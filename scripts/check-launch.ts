@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 if (existsSync(".env.local")) process.loadEnvFile?.(".env.local");
 const required = [
   "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_SERVICE_API_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_SECRET_KEY",
   "OPENAI_API_KEY",
   "NEXT_PUBLIC_OPERATOR_NAME",
   "NEXT_PUBLIC_PRIVACY_OFFICER",
@@ -28,6 +28,6 @@ if (missing.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    "기본 출시 설정 확인 완료. 별도로 실제 인증, RLS, 메일 발송, AI/이미지, 정책 고지 검증 후 공개하세요. PG는 의도적으로 미연동입니다.",
+    "기본 출시 설정 확인 완료. 별도로 실제 인증, RLS, 메일 발송, AI/이미지, 정책 고지, 토스 인앱 결제 검증 후 공개하세요. 별도 웹 PG는 범위에서 제외합니다.",
   );
 }

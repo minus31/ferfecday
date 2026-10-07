@@ -12,10 +12,12 @@ import { Button } from "@/components/ui/button";
 import { serviceRequest } from "@/lib/supabase-browser";
 import { REPORT_PRICE, type ReportView } from "@/lib/product";
 import type { LuckyDay, LuckyPillar } from "@/lib/lucky-day-types";
+import { strengthDescription } from "@/lib/saju/product-report";
 import {
-  qualitativeWeight,
-  strengthDescription,
-} from "@/lib/saju/product-report";
+  getCharacterElement,
+  getTenGodEvidence,
+  readableCharacter,
+} from "@/lib/saju/natal-evidence";
 import { collectStars, sajuLabel } from "@/lib/saju/stars";
 import { getDaewoonPeriod } from "@/lib/saju/daewoon-ai";
 const ELEMENTS = {
@@ -26,12 +28,26 @@ const ELEMENTS = {
   water: "수",
 };
 const COLORS = {
-  tree: "#3f9b64",
-  fire: "#e56b6f",
-  earth: "#d59a45",
-  metal: "#8f8c87",
-  water: "#55769a",
+  tree: "#21734a",
+  fire: "#ae3e4c",
+  earth: "#976421",
+  metal: "#535d68",
+  water: "#315b94",
 };
+const GOD_MEANINGS: Record<string, string> = {
+  비겁: "자기 기준과 협력",
+  식상: "표현과 결과물",
+  재성: "자원과 현실 감각",
+  관성: "기준과 책임",
+  인성: "배움과 수용",
+};
+const ROLE_QI_KEYS = {
+  비겁: "bigeop",
+  식상: "siksang",
+  재성: "jaeseong",
+  관성: "gwanseong",
+  인성: "insung",
+} as const;
 function Section({
   title,
   children,
@@ -65,6 +81,28 @@ function SajuTable({ day }: { day: LuckyDay }) {
     ["12운성", (p) => sajuLabel(p.unseong)],
     ["12신살", (p) => sajuLabel(p.sinsal)],
   ];
+  const colored = (value: string, label: string) => (
+    <span className="inline-flex flex-wrap justify-center gap-1">
+      {[...value]
+        .filter((char) => !/\s/.test(char))
+        .map((char, index) => {
+          const element = getCharacterElement(char);
+          return (
+            <span
+              key={`${char}-${index}`}
+              className="inline-block rounded-md px-1 py-0.5"
+              style={element ? { color: COLORS[element] } : undefined}
+              aria-label={
+                element ? `${label} ${char}, ${ELEMENTS[element]}` : undefined
+              }
+              title={element ? `${char}, ${ELEMENTS[element]}` : undefined}
+            >
+              {char}
+            </span>
+          );
+        })}
+    </span>
+  );
   return (
     <Section title="사주 원국">
       <table className="w-full table-fixed border-collapse text-center text-xs sm:text-sm">
@@ -93,15 +131,29 @@ function SajuTable({ day }: { day: LuckyDay }) {
               {day.pillars.map((p) => (
                 <td
                   key={p.name}
-                  className={`break-words border px-1 py-3 ${label === "천간" || label === "지지" ? "text-2xl font-bold text-primary sm:text-3xl" : ""}`}
+                  className={`break-words border px-1 py-3 ${label === "천간" || label === "지지" ? "text-2xl font-bold sm:text-3xl" : ""}`}
                 >
-                  {render(p)}
+                  {["천간", "지지", "지장간"].includes(label)
+                    ? colored(render(p), `${p.name} ${label}`)
+                    : render(p)}
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="mt-3 text-xs leading-6 text-muted-foreground">
+        글자색은 오행을 뜻합니다:{" "}
+        {Object.entries(ELEMENTS).map(([key, name], index) => (
+          <React.Fragment key={key}>
+            {index > 0 ? ", " : ""}
+            <span style={{ color: COLORS[key as keyof typeof COLORS] }}>
+              {name}
+            </span>
+          </React.Fragment>
+        ))}
+        . 지장간은 각 지지 안에 있는 천간입니다.
+      </p>
     </Section>
   );
 }
@@ -114,12 +166,30 @@ function Elements({ day }: { day: LuckyDay }) {
   const data = points
     .map(({ key, x, y }) => {
       const size = Math.max(
-        0.08,
+        0,
         Math.min(1, day.elementQi.percentages[key] / 40),
       );
       return `${50 + (x - 50) * size},${50 + (y - 50) * size}`;
     })
     .join(" ");
+  const gods = getTenGodEvidence(day);
+  const rankedRoles = Object.values(ROLE_QI_KEYS).sort(
+    (left, right) =>
+      day.strength.roleQi[right].percentage -
+      day.strength.roleQi[left].percentage,
+  );
+  const roleWeight = (name: string) => {
+    const key = ROLE_QI_KEYS[name as keyof typeof ROLE_QI_KEYS];
+    const value = day.strength.roleQi[key].percentage;
+    const rank = rankedRoles.indexOf(key);
+    return value === 0
+      ? "역할 비중이 거의 없음"
+      : rank < 2
+        ? "상대적으로 앞서는 역할"
+        : rank === 2
+          ? "중간 정도의 역할"
+          : "비교적 조용한 역할";
+  };
   return (
     <Section title="오행의 어우러짐">
       <div className="grid items-center gap-4 sm:grid-cols-2">
@@ -129,13 +199,36 @@ function Elements({ day }: { day: LuckyDay }) {
           role="img"
           aria-label="다섯 오행의 상대적인 강약"
         >
+          <title>오행의 상대적인 강약과 네 단계 오각형 눈금</title>
+          {[0.25, 0.5, 0.75, 1].map((size) => (
+            <polygon
+              key={size}
+              data-testid="element-grid-ring"
+              points={points
+                .map(
+                  (p) => `${50 + (p.x - 50) * size},${50 + (p.y - 50) * size}`,
+                )
+                .join(" ")}
+              fill="none"
+              stroke="#a8a29e"
+              strokeOpacity={size === 1 ? 0.8 : 0.55}
+              strokeWidth={size === 1 ? 0.8 : 0.5}
+            />
+          ))}
+          {points.map((p) => (
+            <line
+              key={p.key}
+              x1="50"
+              y1="50"
+              x2={p.x}
+              y2={p.y}
+              stroke="#a8a29e"
+              strokeOpacity=".55"
+              strokeWidth=".5"
+            />
+          ))}
           <polygon
-            points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-            fill="none"
-            stroke="#d6d3d1"
-            strokeWidth=".5"
-          />
-          <polygon
+            data-testid="element-data-polygon"
             points={data}
             fill="rgba(110,59,99,.12)"
             stroke="#6e3b63"
@@ -154,14 +247,60 @@ function Elements({ day }: { day: LuckyDay }) {
             </text>
           ))}
         </svg>
-        <dl className="space-y-3 text-sm">
-          {keys.map((key) => (
-            <div key={key} className="flex justify-between gap-4 border-b pb-2">
-              <dt style={{ color: COLORS[key] }}>{ELEMENTS[key]}</dt>
-              <dd>{qualitativeWeight(day.elementQi.percentages[key])} 기운</dd>
+        <div className="space-y-3 text-sm leading-7">
+          <p>
+            오각형은 목, 화, 토, 금, 수의 상대적인 배치를 보여줍니다. 안쪽의
+            눈금은 비교를 돕기 위한 것이며 점수는 아닙니다.
+          </p>
+          <p>
+            일간 {readableCharacter(day.pillars[1].stem)}을 기준으로 각 기운이 어떤 역할을 하는지는
+            아래 십성 구성에서 확인할 수 있습니다.
+          </p>
+        </div>
+      </div>
+      <div className="mt-6 space-y-3" aria-label="일간 기준 십성 구성">
+        <h4 className="font-semibold">일간 기준 십성 구성</h4>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {gods.map((group) => (
+            <div
+              key={group.name}
+              className="rounded-xl border bg-secondary/20 p-4"
+            >
+              <h5 className="font-semibold">
+                {group.name}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {GOD_MEANINGS[group.name]}
+                </span>
+              </h5>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {roleWeight(group.name)}
+              </p>
+              <div className="mt-3 space-y-3 text-xs leading-5">
+                {group.gods.map((god) => (
+                  <div
+                    key={god.name}
+                    className="border-t pt-2 first:border-0 first:pt-0"
+                  >
+                    <strong className="block text-sm">{god.name}</strong>
+                    <p className="mt-1">
+                      겉글자:{" "}
+                      {god.visible.length ? god.visible.join(", ") : "없음"}
+                    </p>
+                    <p>
+                      지장간:{" "}
+                      {god.hidden.length ? god.hidden.join(", ") : "없음"}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
-        </dl>
+        </div>
+        <p className="text-xs leading-6 text-muted-foreground">
+          역할의 강약은 일간을 기준으로 오행 전체를 비교한 것이며, 아래 각
+          십성의 존재 여부는 실제 글자의 위치입니다. 존재만으로 성격이나 운명을
+          단정하지 않습니다.
+        </p>
       </div>
       <p className="mt-4 text-xs leading-6 text-muted-foreground">
         오행은 기질의 서로 다른 쓰임을 살펴보는 전통적 분류입니다. 많고

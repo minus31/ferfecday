@@ -1,4 +1,4 @@
--- Supabase SQL Editor 또는 CLI migration으로 실행. 결제/해설은 브라우저 직접 접근 금지.
+-- ServiceAX migration version 20261007231004. 결제/해설은 브라우저 직접 접근 금지.
 create extension if not exists pgcrypto;
 create table public.birthdaygift_searches (
   id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,

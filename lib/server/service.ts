@@ -15,7 +15,7 @@ import {
   type Account,
   type Database,
 } from "./database";
-import { generateReport, generateImage } from "./generation";
+import { generateReport, generateImage, ImageGenerationError } from "./generation";
 
 export function isAllowedOrigin(origin: string | null) {
   if (!origin) return true;
@@ -147,7 +147,7 @@ export function createService(deps: ServiceDependencies) {
         const { createClient } = await import("@supabase/supabase-js");
         const auth = createClient(
           process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!,
           { auth: { persistSession: false, autoRefreshToken: false } },
         );
         const { data, error } = await auth.auth.signInWithPassword({
@@ -303,10 +303,24 @@ export function createService(deps: ServiceDependencies) {
               429,
               "이미지 요청이 많습니다. 잠시 후 다시 시도해 주세요.",
             );
-          const bytes = await deps.image(day.dayPillar);
-          return bytes
-            ? json({ status: "ready", url: await db.saveImage(key, bytes) })
-            : json({ status: "unavailable", url: null });
+          try {
+            const bytes = await deps.image(day.dayPillar);
+            if (!bytes) return json({ status: "unavailable", url: null, reason: "generation" });
+            return json({ status: "ready", url: await db.saveImage(key, bytes) });
+          } catch (error) {
+            console.error("Portrait generation failed", {
+              pillar: day.dayPillar,
+              reason: error instanceof ImageGenerationError ? error.reason : "storage-or-network",
+              status: error instanceof ImageGenerationError ? error.status : undefined,
+            });
+            return json({
+              status: "unavailable",
+              url: null,
+              reason: error instanceof ImageGenerationError
+                ? error.reason === "missing-key" ? "configuration" : "generation"
+                : "storage-or-network",
+            });
+          }
         } finally {
           await db.release(key, token);
         }

@@ -21,6 +21,7 @@ import {
   generateReport,
   generateImage,
   buildImagePrompt,
+  ImageGenerationError,
 } from "../lib/server/generation";
 import { memoryDatabase, TEST_USERS } from "./product-test-fixtures";
 import { authenticate } from "../lib/server/database";
@@ -178,6 +179,24 @@ const image = await (
 assert.equal(image.status, "ready");
 await request({ action: "image", searchId: search.id, candidateId: day.id });
 assert.equal(imageCalls, 1);
+const failedImageState = memoryDatabase();
+await failedImageState.db.saveSearch(search);
+const failedImageHandler = createService({
+  database: () => failedImageState.db,
+  authenticate: async () => TEST_USERS["test-user-a"],
+  report: async (day) => buildProductReport(day),
+  image: async () => { throw new ImageGenerationError("missing-key"); },
+});
+const failedImageResponse = await failedImageHandler(
+  new Request("http://localhost/api/service", {
+    method: "POST",
+    body: JSON.stringify({ action: "image", searchId: search.id, candidateId: day.id }),
+  }),
+);
+assert.equal(failedImageResponse.status, 200);
+assert.deepEqual(await failedImageResponse.json(), {
+  status: "unavailable", url: null, reason: "configuration",
+});
 const same = search.result.results.find(
   (d) => d.id !== day.id && d.dayPillar === day.dayPillar,
 );

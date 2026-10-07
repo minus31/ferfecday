@@ -5,7 +5,14 @@ import {
   buildProductSummary,
   validateProductReport,
   INTERNAL_COPY,
+  reportGroundingIssues,
 } from "../lib/saju/product-report";
+import {
+  buildNatalEvidence,
+  buildSixStepAnalysis,
+  getCharacterElement,
+  getTenGodEvidence,
+} from "../lib/saju/natal-evidence";
 import {
   DAY_PILLARS,
   getDayPillarProfile,
@@ -61,6 +68,97 @@ for (const [key, value] of Object.entries(pairDay.specialSals))
       key,
     );
 const report = buildProductReport(sample);
+const realDays = calculateLuckyDays({
+  from: "2026-09-17",
+  to: "2026-09-17",
+  gender: "F",
+  location: "서울",
+}).results;
+assert.equal(new Set(realDays.map(buildProductSummary)).size, realDays.length);
+const laterDate = new Date(Date.UTC(2026, 8, 17) + 60 * 86_400_000)
+  .toISOString()
+  .slice(0, 10);
+const laterDay = calculateLuckyDays({
+  from: laterDate,
+  to: laterDate,
+  gender: "F",
+  location: "서울",
+}).results[0];
+assert.equal(realDays[0].dayPillar, laterDay.dayPillar);
+assert.notEqual(realDays[0].pillars[2].branch, laterDay.pillars[2].branch);
+assert.notEqual(
+  buildProductSummary(realDays[0]),
+  buildProductSummary(laterDay),
+);
+assert.notEqual(
+  buildProductReport(realDays[0]).sections[0].body,
+  buildProductReport(laterDay).sections[0].body,
+);
+for (const day of realDays) {
+  const grounded = buildProductReport(day);
+  assert.ok(validateProductReport(grounded, day));
+  assert.deepEqual(reportGroundingIssues(grounded, day), []);
+  assert.ok(buildProductSummary(day).includes(day.pillars[0].ganziHangul));
+  const tenGods = getTenGodEvidence(day);
+  const analysis = buildSixStepAnalysis(day);
+  assert.equal(analysis.length, 6);
+  assert.equal(new Set(analysis.map((step) => step.step)).size, 6);
+  assert.ok(analysis[0].evidence.includes(day.pillars[1].stem));
+  assert.ok(analysis[1].evidence.includes(day.pillars[2].branch));
+  assert.ok(analysis[5].evidence.includes(day.daewoon[0].ganziHangul));
+  assert.ok(
+    analysis.every((step) => !/\b(?:undefined|null)\b/.test(step.evidence)),
+  );
+  assert.ok(
+    !buildNatalEvidence(day).missing.includes(
+      buildNatalEvidence(day).dayMasterElement,
+    ),
+  );
+  assert.equal(tenGods.length, 5);
+  assert.equal(tenGods.flatMap((group) => group.gods).length, 10);
+  for (const group of tenGods)
+    for (const god of group.gods)
+      for (const position of [...god.visible, ...god.hidden])
+        assert.ok(day.pillars.some((pillar) => position.includes(pillar.name)));
+  for (const pillar of day.pillars)
+    for (const char of (pillar.stem + pillar.branch + pillar.jigang).match(
+      /[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]/g,
+    ) ?? [])
+      assert.ok(getCharacterElement(char), `${char}의 오행 누락`);
+}
+assert.doesNotMatch(
+  buildProductSummary(sample),
+  /다섯 오행이 모두 자리|한 가지 재능에 머물기보다/,
+);
+const wrongMaster = structuredClone(report);
+wrongMaster.sections[1].body += `\n\n${sample.pillars[1].stem === "甲" ? "乙" : "甲"} 일간은 계절의 도움을 받습니다.`;
+assert.equal(validateProductReport(wrongMaster, sample), false);
+const wrongMonth = structuredClone(report);
+wrongMonth.sections[1].body += `\n\n${sample.pillars[2].branch === "子" ? "丑" : "子"} 월지에 기운이 자리합니다.`;
+assert.equal(validateProductReport(wrongMonth, sample), false);
+const awkwardCopy = structuredClone(report);
+awkwardCopy.sections[1].body +=
+  "\n\n한 가지 재능에 머물기보다 자기 방식으로 배우고 사람들과 조화를 찾습니다.";
+assert.equal(validateProductReport(awkwardCopy, sample), false);
+const unverifiedPattern = structuredClone(report);
+unverifiedPattern.sections[1].body +=
+  "\n\n식상생재가 성립해 큰 재물을 얻습니다.";
+assert.equal(validateProductReport(unverifiedPattern, sample), false);
+const missingElement = structuredClone(report);
+const incompleteDay = structuredClone(sample);
+incompleteDay.pillars = incompleteDay.pillars.map((pillar) => ({
+  ...pillar,
+  stem: "甲",
+  branch: "寅",
+  jigang: "甲乙",
+}));
+missingElement.sections[1].body += "\n\n다섯 오행이 모두 자리합니다.";
+assert.ok(buildNatalEvidence(incompleteDay).missing.length > 0);
+assert.ok(
+  reportGroundingIssues(missingElement, incompleteDay).includes(
+    "원국에 없는 오행을 모두 있다고 서술",
+  ),
+);
 for (const bad of [
   null,
   {},

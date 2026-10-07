@@ -77,15 +77,19 @@ export function DayPillarPortrait({
             height={1024}
             className="size-full object-cover"
             loading="lazy"
-            onError={() => setResult({ status: "unavailable", url: null })}
+            onError={() => setResult({ status: "unavailable", url: null, reason: "storage-or-network" })}
           />
         ) : (
           <div className="space-y-3 p-4 text-center text-xs leading-6 text-muted-foreground">
             <Sparkles className="mx-auto size-8 text-primary/60" />
             <p>
-              {result
-                ? "지금은 상징 이미지를 불러올 수 없어요"
-                : "아이의 기질을 담은 그림을 준비하고 있어요…"}
+              {!result
+                ? "아이의 기질을 담은 그림을 준비하고 있어요…"
+                : result.reason === "configuration"
+                  ? "상징 이미지 생성 설정을 준비 중이에요"
+                  : result.reason === "storage-or-network"
+                    ? "이미지 저장 또는 연결에 문제가 있어요"
+                    : "지금은 상징 이미지를 불러올 수 없어요"}
             </p>
             {result?.status === "unavailable" && (
               <button

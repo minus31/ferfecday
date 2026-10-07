@@ -50,6 +50,35 @@ test("가입, 과거 검색, Top10, 무료 경계, 결제 준비, 이전 결과�
   await expect(
     dialog.getByRole("heading", { name: "신살과 길성" }),
   ).toBeVisible();
+  await expect(dialog.locator('[data-testid="element-grid-ring"]')).toHaveCount(
+    4,
+  );
+  await expect(
+    dialog.locator('[data-testid="element-data-polygon"]'),
+  ).toHaveCount(1);
+  await expect(dialog.getByText("일간 기준 십성 구성")).toBeVisible();
+  await expect(dialog.getByText("상대적으로 앞서는 역할")).toHaveCount(2);
+  for (const god of [
+    "비견",
+    "겁재",
+    "식신",
+    "상관",
+    "정재",
+    "편재",
+    "정관",
+    "편관",
+    "정인",
+    "편인",
+  ])
+    await expect(dialog.getByText(god, { exact: true }).first()).toBeVisible();
+  expect(
+    await dialog.locator("td [aria-label]").count(),
+  ).toBeGreaterThanOrEqual(8);
+  await dialog.getByText("일간 기준 십성 구성").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath("elements.png"),
+    fullPage: false,
+  });
   await expect(
     dialog.getByRole("heading", { name: "대운과 세운" }),
   ).toBeVisible();

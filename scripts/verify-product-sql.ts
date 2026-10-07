@@ -6,7 +6,7 @@ await db.exec(`create role anon; create role authenticated; create role service_
 create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,created_at timestamptz);
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit integer,allowed_mime_types text[]);`);
 const sql = await readFile(
-  new URL("../supabase/migrations/202609170001_product.sql", import.meta.url),
+  new URL("../supabase/migrations/20261007231004_product_initial.sql", import.meta.url),
   "utf8",
 );
 // PGlite에서는 별도 확장 없이 내장 UUID 함수를 사용해 동일 SQL을 검증한다.

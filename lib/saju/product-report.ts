@@ -4,6 +4,12 @@ import { getDayPillarProfile } from "./day-pillar-profiles";
 import { buildDaewoonInterpretations } from "./daewoon-knowledge";
 import { getDaewoonPeriod } from "./daewoon-ai";
 import { sajuLabel } from "./stars";
+import {
+  buildNatalEvidence,
+  natalEvidenceSentence,
+  readableCharacter,
+  subjectParticle,
+} from "./natal-evidence";
 
 type Role = keyof LuckyDay["strength"]["roleQi"];
 const ELEMENT = {
@@ -146,23 +152,25 @@ function context(day: LuckyDay) {
 
 export function buildProductSummary(day: LuckyDay) {
   const { first, second, profile } = context(day);
-  const balance = day.elementQi.missing.length
-    ? "크게 드러나는 기질과 생활 속에서 차근차근 길러 갈 기질이 함께 있습니다."
-    : "다섯 오행이 모두 자리해 여러 경험을 받아들일 바탕을 갖추고 있습니다.";
+  const facts = buildNatalEvidence(day);
+  const balance = facts.missing.length
+    ? `${facts.strongest} 기운이 앞서는 반면 ${facts.missing.join(", ")} 기운은 원국에 직접 드러나지 않아, 관련 경험을 차근차근 넓혀 볼 여지가 있습니다.`
+    : `${facts.strongest} 기운이 상대적으로 앞서고 ${facts.weakest} 기운은 차분하게 자리해, 두 기운의 쓰임을 함께 살펴볼 만합니다.`;
   return clean(
-    `${day.dayPillarHangul} 일주를 가진 아이는 ${profile.strengths.join(", ")} 같은 장점을 키워 갈 가능성이 있습니다. ${balance} 특히 ${first.name}, 곧 ${first.meaning}이 중심을 이루고, ${second.name}이 뜻하는 ${second.meaning}이 이를 받칩니다. ${strengthDescription(day)} 두 힘이 함께 자라면 한 가지 재능에 머물기보다 자기 방식으로 배우고 사람들과 조화를 찾는 모습으로 이어질 수 있습니다.`,
+    `${day.dayPillarHangul} 일주의 아이는 ${readableCharacter(facts.dayMaster)} 일간이 ${readableCharacter(facts.monthBranch)} 월지를 만난 구성입니다. ${facts.seasonalSupport}. ${balance} ${facts.primaryRole}${subjectParticle(facts.primaryRole)} 중심에 있고 ${facts.secondaryRole}${subjectParticle(facts.secondaryRole)} 뒤를 받칩니다. 시주 ${facts.hourPillar}의 천간에는 ${facts.hourStemGod}${subjectParticle(facts.hourStemGod)} 놓여 있어, ${profile.strengths[0]} 같은 일주 특성이 어떤 방식으로 밖에 드러날지 함께 살펴볼 수 있습니다. ${facts.roots.length ? `${facts.roots[0]}에 같은 오행의 뿌리가 확인됩니다.` : `지지에 같은 오행의 뿌리가 두드러지지 않아 주변의 도움을 활용하는 방식도 함께 보세요.`}`,
   );
 }
 
 /** 네트워크 실패에도 서버가 제공하는 사주 근거 기반의 풍부한 기본 해설. */
 export function buildProductReport(day: LuckyDay): ReportBundle {
   const { first, second, profile: p, element } = context(day);
+  const facts = buildNatalEvidence(day);
   const foundation = `${day.dayPillarHangul} 일주의 바탕에 ${first.name}, 즉 ${first.meaning}이 두드러지고 ${second.name}, 곧 ${second.meaning}이 함께합니다.`;
   const balance = strengthDescription(day);
-  const learning = `${first.learn}. 여기에 ${second.meaning}이 더해지므로 한 가지 공부법만 고집하기보다 설명을 받아들이는 단계와 스스로 써 보는 단계를 나누는 편이 좋습니다.`;
+  const learning = `${first.learn}. ${second.name}의 ${second.meaning}은 배운 내용을 익힌 뒤 직접 적용할 때 함께 살펴볼 수 있습니다.`;
   const sections: Record<string, string[]> = {
     core: [
-      `부모님이 만나게 될 아이의 중심 기질은 ${day.dayPillarHangul} 일주에서 출발합니다. 전통적으로 ‘${p.image}’에 비유하는 모습은 ${p.strengths.join(", ")} 같은 가능성을 생활 속에서 발견하라는 뜻으로 읽을 수 있습니다. ${p.detail.temperament} 월지에 놓인 ${day.pillars[2].ganziHangul.slice(1)}의 계절은 ${SEASON[day.pillars[2].branch]}에 해당해, 이 기질이 자라는 바탕을 함께 보여줍니다.`,
+      `부모님이 만나게 될 아이의 중심 기질은 ${day.dayPillarHangul} 일주에서 출발합니다. 전통적으로 ‘${p.image}’에 비유하는 모습은 ${p.strengths.join(", ")} 같은 가능성을 생활 속에서 발견하라는 뜻으로 읽을 수 있습니다. ${p.detail.temperament} 월지에 놓인 ${day.pillars[2].ganziHangul.slice(1)}의 계절은 ${SEASON[day.pillars[2].branch]}에 해당합니다. ${natalEvidenceSentence(day)}`,
       `${foundation} ${balance} 그래서 같은 일주라도 자기 생각을 얼마나 빨리 꺼내는지, 낯선 환경에서 누구의 도움을 찾는지에 따라 겉으로 보이는 모습은 달라집니다. 강점을 한 단어로 정해 두기보다 두 힘이 서로 돕는 조건을 살펴보는 것이 중요합니다.`,
       `예를 들어 ${first.example} 살펴보세요. 잘한 결과만 칭찬하기보다 시작한 이유와 어려움을 넘긴 방법을 함께 이야기하면 아이가 자신의 장점을 알아갑니다. ${p.detail.balance} 사주는 미래를 확정하는 답이 아니라 아이의 가능성을 넓게 이해하는 참고가 됩니다.`,
     ],
@@ -178,7 +186,7 @@ export function buildProductReport(day: LuckyDay): ReportBundle {
     ],
     "hidden-strength": [
       `겉으로 먼저 보이는 ${first.meaning}만으로 재능을 정하기는 이릅니다. ${second.name}에 해당하는 ${second.meaning}은 익숙해진 환경이나 충분히 연습한 활동에서 더 선명하게 드러날 수 있기 때문입니다. 일주가 보여주는 ${p.strengths.join(", ")} 같은 강점을 혼자 쓰는 때와 사람들과 함께 쓰는 때로 나누어 관찰하면 첫인상에 가려졌던 가능성이 보입니다.`,
-      `두 성향은 서로 별개인 재능 목록이 아니라 시작한 일을 다듬고 완성하는 과정에서 만납니다. ${first.learn}. 여기에 보조 성향이 더해지면 혼자 생각한 것을 다른 사람과 나누거나 막연한 흥미를 실제 활동으로 바꾸는 연결점이 생길 수 있습니다.`,
+      `두 성향은 시작한 일을 다듬고 완성하는 과정에서 만납니다. ${first.learn}. ${second.name}이 실제로 드러나는 활동을 따로 살피면, 먼저 흥미를 보이는 순간과 끝까지 다듬는 순간의 차이를 이해하기 좋습니다.`,
       `집에서 보이는 모습과 친구들과 함께 있을 때의 모습을 비교해 주세요. 먼저 나서는 역할과 뒤에서 정리하는 역할을 번갈아 맡기면 한 가지 평가에 가려졌던 장점이 드러납니다. ${second.risk}가 보일 때에는 능력이 없다고 판단하기보다 과제가 너무 크거나 역할이 불분명하지 않은지 점검하면 좋습니다. 익숙하지 않은 역할을 끝낸 뒤 무엇이 즐거웠는지 묻는 대화가 두 번째 강점을 발견하는 출발점입니다.`,
     ],
     relationships: [
@@ -225,6 +233,38 @@ export function buildProductReport(day: LuckyDay): ReportBundle {
         : "환경을 바꾸는 선택은 이동을 뜻하는 상징의 유무만으로 정하지 않습니다. 성인이 된 뒤 새로운 지역이나 분야에 관심이 생기면 익숙한 강점을 어디에서 활용할 수 있는지, 새로 배워야 할 것은 무엇인지 구분해 보세요. 사주는 선택을 대신하는 답보다 스스로 중요하게 여기는 조건을 되짚는 질문으로 활용할 때 더 유용합니다.",
     ],
   };
+  const roleSource = (name: string) =>
+    facts.tenGods
+      .find((group) => group.name === name)
+      ?.gods.flatMap((god) => [...god.visible, ...god.hidden])[0];
+  const learningEvidence = [
+    roleSource("인성")
+      ? `인성은 ${roleSource("인성")}에서 확인되어 받아들이고 이해하는 방식을 살펴볼 단서가 됩니다.`
+      : "인성의 겉글자와 지장간 근거가 뚜렷하지 않아 실제로 배우는 모습을 함께 살펴야 합니다.",
+    roleSource("식상")
+      ? `식상은 ${roleSource("식상")}에서 확인되어 배운 것을 표현하는 방식을 살펴볼 단서가 됩니다.`
+      : "식상의 겉글자와 지장간 근거가 뚜렷하지 않아 실제 표현 경험을 함께 살펴야 합니다.",
+  ].join(" ");
+  const sectionEvidence: Record<string, string> = {
+    core: "",
+    "inner-pace": `${facts.seasonalSupport}. ${facts.roots.length ? `${facts.roots[0]}에 같은 오행의 뿌리가 있습니다.` : "같은 오행의 지지 뿌리는 두드러지지 않습니다."}`,
+    learning: `${readableCharacter(facts.dayMaster)} 일간을 기준으로 학업에 관계된 두 역할을 구분합니다. ${learningEvidence}`,
+    "hidden-strength": `${readableCharacter(facts.dayMaster)} 일간 기준 ${facts.secondaryRole}은 ${roleSource(facts.secondaryRole) ?? `${facts.strongest} 기운과의 관계`}에서 확인되는 기운입니다.`,
+    relationships: `${readableCharacter(day.pillars[1].branch)} 일지의 본기 십성은 ${sajuLabel(day.pillars[1].branchSipsin)}이며, ${facts.relation ? `${facts.relation} 관계도 함께 살펴봅니다.` : "다른 기둥과의 관계는 실제 생활 경험에 비추어 살펴봅니다."}`,
+    "adult-relationships": `${readableCharacter(day.pillars[1].branch)} 일지와 ${sajuLabel(day.pillars[1].branchSipsin)}의 조합은 관계에서 스스로 중요하게 여길 기준을 생각해 볼 단서입니다.`,
+    challenge: `${readableCharacter(facts.dayMaster)} 일간을 둘러싼 ${facts.strongest} 기운이 앞서고 ${facts.weakest} 기운은 상대적으로 조용합니다. 두 힘의 차이가 장점과 부담을 어떻게 바꾸는지 함께 살펴야 합니다.`,
+    wellbeing: `${readableCharacter(facts.dayMaster)} 일간의 ${facts.yongshin.method} 관점에서 ${facts.yongshin.element} 기운을 보완 방향으로 봅니다. 이는 질병의 근거가 아니라 원국의 계절과 힘을 읽는 기준입니다.`,
+    career: `사회적 역할을 볼 때 ${readableCharacter(facts.monthBranch)} 월지 본기 ${readableCharacter(facts.monthMainStem)}의 ${facts.monthGod}을 먼저 확인합니다. ${facts.monthMainExposed ? "이 글자는 다른 천간에도 드러납니다." : "본기는 천간에 직접 드러나지 않습니다."} ${
+      ["식상", "관성", "재성"]
+        .filter((role) => roleSource(role))
+        .map((role) => `${role}은 ${roleSource(role)}에서 확인됩니다`)
+        .join(". ") ||
+      "식상, 관성, 재성의 겉글자와 지장간 근거는 뚜렷하지 않습니다"
+    }.`,
+    money: `재성은 ${roleSource("재성") ? `${roleSource("재성")}에서 확인됩니다` : "원국의 겉글자와 지장간에서 뚜렷이 확인되지 않습니다"}. 따라서 재물의 크기를 예언하기보다 자원을 다루는 습관을 살펴봅니다.`,
+    parenting: `${readableCharacter(facts.dayMaster)} 일간은 ${facts.roots.length ? `${facts.roots[0]}에 뿌리가 있고` : "같은 오행의 지지 뿌리가 뚜렷하지 않고"}, ${facts.yongshin.method} 관점에서는 ${facts.yongshin.element} 기운을 보완 방향으로 봅니다.`,
+    "life-flow": `첫 대운 ${day.daewoon[0]?.ganziHangul ?? ""}의 천간과 지지는 원국 ${day.dayPillarHangul}의 기운에 새 환경을 더하는 것으로 읽습니다.`,
+  };
   const flow = buildDaewoonInterpretations(day);
   return {
     version: REPORT_VERSION,
@@ -236,7 +276,15 @@ export function buildProductReport(day: LuckyDay): ReportBundle {
         id === "core"
           ? `${p.strengths[0]}, 자기 모습을 찾아갈 아이의 강점`
           : title,
-      body: sections[id].map(clean).join("\n\n"),
+      body: sections[id]
+        .map((paragraph, index) =>
+          clean(
+            index === 0 && sectionEvidence[id]
+              ? `${paragraph} ${sectionEvidence[id]}`
+              : paragraph,
+          ),
+        )
+        .join("\n\n"),
     })),
     periods: day.daewoon.map((period) => {
       const span = getDaewoonPeriod(day, period.index)!;
@@ -274,7 +322,7 @@ export function buildProductReport(day: LuckyDay): ReportBundle {
         title: `${span.ageRange[0]}~${span.ageRange[1]}세, ${period.ganziHangul}의 흐름`,
         body: clean(
           [
-            `${period.ganziHangul}의 기운을 만나는 이 시기에는 ${tone}. 천간의 ${sajuLabel(period.stemSipsin)}은 ${stem.meaning}을, 지지의 ${sajuLabel(period.branchSipsin)}은 ${branch.meaning}을 더하는 모습으로 읽습니다. ${day.dayPillarHangul} 일주의 ${p.strengths.join(", ")} 같은 장점이 이 두 힘과 만날 때 어떤 쓰임을 찾는지 살펴볼 수 있습니다.`,
+            `${period.ganziHangul}의 기운을 만나는 이 시기에는 ${tone}. 원국의 ${facts.primaryRole}과 ${facts.monthBranch} 월지 위에 대운 천간 ${period.ganzi[0]}의 ${sajuLabel(period.stemSipsin)}, 지지 ${period.ganzi[1]}의 ${sajuLabel(period.branchSipsin)}이 더해집니다. 천간은 ${stem.meaning}을, 지지는 ${branch.meaning}을 살펴볼 단서입니다. ${day.dayPillarHangul} 일주의 ${p.strengths.join(", ")} 같은 장점이 이 두 힘과 만날 때 어떤 쓰임을 찾는지 살펴볼 수 있습니다.`,
             `${subject}에게 중요한 생활 과제는 ${task}입니다. ${crossing ? "앞쪽 연령에서는 학업과 자율성을, 성인이 된 뒤에는 독립과 진로의 선택권을 구분해서 살펴야 합니다." : "기회가 생겼다는 이유만으로 모두 받아들이기보다 지금까지 쌓은 경험을 어디에 쓸지 먼저 정하는 편이 좋습니다."} ${span.ageRange[0] >= 60 ? "배움과 교류를 의무처럼 늘리기보다 자발적으로 즐길 수 있는 활동과 편안한 휴식의 간격을 정해 보세요." : adult ? stem.career + "." : stem.learn + "."} ${stem.risk}가 나타날 때에는 역할과 기대의 크기를 다시 조정하면 도움이 됩니다.`,
             `초반 ${span.yearRange[0]}년부터 후반 ${span.yearRange[1]}년까지는 해마다 다른 기운이 겹칩니다. ${yearly} ${analysis?.sinsalText || "한 해의 작은 변화와 긴 시기의 방향을 구분하면 계획을 유연하게 다듬기 좋습니다."} ${adult ? "가족은 당사자의 결정을 대신하지 않고 요청받은 정보와 정서적 지지를 나누는 편이 자연스럽습니다." : "부모는 결과를 재촉하기보다 즐거웠던 과정과 필요한 도움을 묻고 충분히 다시 시도할 시간을 마련해 주세요."} 흐름의 해석은 사건의 예언이 아니라 변화 속에서도 자기 기준을 잃지 않도록 돕는 참고입니다.`,
           ].join("\n\n"),
@@ -286,6 +334,56 @@ export function buildProductReport(day: LuckyDay): ReportBundle {
 
 export const INTERNAL_COPY =
   /%|퍼센트|\bSI\b|σ|생조\s*\d|극설\s*\d|raw.?score|base.?score|이\s?날짜(?:에서는|를 선택|의)|프로필에서는|입력값|계산 결과에서는|\d+(?:\.\d+)?\s*점/i;
+export function reportGroundingIssues(bundle: ReportBundle, day: LuckyDay) {
+  const issues: string[] = [];
+  const facts = buildNatalEvidence(day);
+  const anchors = new Set([
+    day.dayPillar,
+    day.dayPillarHangul,
+    ...day.pillars.flatMap((pillar) => [
+      pillar.ganzi,
+      pillar.ganziHangul,
+      pillar.stem,
+      pillar.branch,
+    ]),
+  ]);
+  for (const section of bundle.sections) {
+    if (!section || typeof section.body !== "string") continue;
+    if (![...anchors].some((anchor) => anchor && section.body.includes(anchor)))
+      issues.push(`${section.id}: 원국 글자 근거 없음`);
+  }
+  for (const period of bundle.periods) {
+    if (!period || typeof period.body !== "string") continue;
+    const matching = day.daewoon.find((item) => item.index === period.index);
+    if (
+      matching &&
+      !period.body.includes(matching.ganziHangul) &&
+      !period.body.includes(matching.ganzi)
+    )
+      issues.push(`${period.index}: 대운 간지 근거 없음`);
+  }
+  const body = [...bundle.sections, ...bundle.periods]
+    .map((item) => item?.body ?? "")
+    .join("\n");
+  if (
+    facts.missing.length &&
+    /(?:다섯|오행\s?다섯).*오행.*모두|오행이 모두 (?:갖춰|자리)/.test(body)
+  )
+    issues.push("원국에 없는 오행을 모두 있다고 서술");
+  if (
+    /다섯 오행이 모두 자리해 여러 경험을 받아들일 바탕|한 가지 재능에 머물기보다 자기 방식으로 배우고|든든하게 받치는 기운/.test(
+      body,
+    )
+  )
+    issues.push("반복적이거나 근거가 약한 상투 표현");
+  if (/식상생재|관인상생|식신제살|지장간 암합|격국의 성패/.test(body))
+    issues.push("별도 성립 판정이 없는 해석");
+  for (const match of body.matchAll(/([甲乙丙丁戊己庚辛壬癸])\s?일간/g))
+    if (match[1] !== facts.dayMaster) issues.push(`일간 불일치: ${match[1]}`);
+  for (const match of body.matchAll(/([子丑寅卯辰巳午未申酉戌亥])\s?월지/g))
+    if (match[1] !== facts.monthBranch) issues.push(`월지 불일치: ${match[1]}`);
+  return issues;
+}
 export function validateProductReport(
   value: unknown,
   day: LuckyDay,
@@ -327,6 +425,7 @@ export function validateProductReport(
     new Set(bundle.sections.map((s) => s.body)).size !== SECTION_TOPICS.length
   )
     return false;
+  if (reportGroundingIssues(bundle, day).length) return false;
   const health = bundle.sections.find((s) => s.id === "wellbeing")!.body;
   if (
     !/의료|의사/.test(health) ||
