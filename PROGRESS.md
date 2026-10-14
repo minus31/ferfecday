@@ -1,5 +1,12 @@
 # 제품화 진행 기록
 
+## 2026-10-15 운영 API 기동 오류 수정
+
+- [원인] Vercel이 `api/service.ts`를 ESM으로 변환하면서 `../lib/server/service`처럼 확장자 없는 상대 import를 남겼다. 실제 운영 함수가 `ERR_MODULE_NOT_FOUND`로 시작에 실패해 로그인 후 보호 API가 HTTP 500을 반환했다.
+- [수정] 서버 의존 그래프를 esbuild로 단일 ESM 파일에 묶고 `/api/service`, `/api/saju-report`가 생성된 `.mjs`를 명시적으로 불러오도록 했다. 타입 선언과 번들 로드 회귀 검사를 추가했다.
+- [검증] Node 24에서 전체 `verify`, 데스크톱, 모바일 Playwright 6건 통과. Vercel 로컬 빌드의 함수 디렉터리에서 진입점을 직접 로드해 비로그인 요청이 401을 반환하는 것을 확인했다. 보호된 Vercel Preview에서도 `/api/service`가 401을 반환해 기존 500이 재현되지 않았다.
+- [남음] 운영 배포 후 실사용자 로그인과 검색 저장까지 다시 확인해야 한다. Vercel Production의 민감 변수는 CLI로 값을 가져올 수 없어 존재 여부만 확인했다.
+
 ## 2026-10-08 ServiceAX 연결과 출시 준비
 
 - [완료] 기존 미커밋 작업을 보존한 채 `release/serviceax-launch` 브랜치로 전환했다. ServiceAX 서울 프로젝트에 초기, 보안 강화 마이그레이션을 적용하고 원격 기록, 8개 서비스 테이블의 anon/authenticated 직접 접근 차단, 이미지 버킷 공개 읽기와 쓰기 정책 부재를 확인했다.
