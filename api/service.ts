@@ -1,2 +1,2 @@
-import { handleService } from "../lib/server/service";
+import { handleService } from "../lib/server/api-bundle.mjs";
 export default { fetch: handleService };
