@@ -8,10 +8,11 @@ import { POLICY_VERSION } from "../lib/product";
 const nickname = `test${randomBytes(6).toString("hex")}`;
 const password = randomBytes(24).toString("base64url");
 async function call(action: string, body: Record<string, unknown> = {}, token?: string) {
-  const response = await handleService(new Request("https://ferfecday.vercel.app/api/service", {
+  const request = new Request(process.env.LIVE_SERVICE_ENDPOINT || "https://ferfecday.vercel.app/api/service", {
     method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ action, ...body }),
-  }));
+  });
+  const response = process.env.LIVE_SERVICE_ENDPOINT ? await fetch(request) : await handleService(request);
   return { status: response.status, body: await response.json() };
 }
 let created = false;

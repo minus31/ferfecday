@@ -24,7 +24,11 @@ npm run build
 npm run check:launch
 ```
 
-`test:e2e`는 로컬 전용 메모리 저장소와 인증 응답을 사용해 웹 흐름을 검사합니다. 운영 API에는 테스트 인증 우회가 없습니다. SQL 검사는 PGlite에서 스키마, 접근 권한, 잠금, 세션, 삭제를 검사합니다. 실제 Supabase, SMTP, OpenAI 호출은 별도 운영 연결 검증이 필요합니다.
+`test:e2e`는 로컬 전용 메모리 저장소와 인증 응답을 사용해 웹 흐름을 검사합니다. 운영 API에는 테스트 인증 우회가 없습니다. SQL 검사는 PGlite에서 스키마, 접근 권한, 잠금, 세션, 삭제를 검사합니다. 실제 Supabase와 OpenAI 호출은 별도 운영 연결 검증이 필요합니다.
+
+실제 닉네임 계정 점검은 서버 비밀 설정을 로드한 상태에서 `npm run verify:live-nickname`으로 실행합니다. 배포 API를 검사하려면 `LIVE_SERVICE_ENDPOINT=https://ferfecday.vercel.app/api/service`를 추가합니다. 임시 계정을 만들고 테스트 후 삭제합니다.
+
+배포된 웹 전체 흐름은 같은 비밀 설정과 함께 `npm run verify:live-browser`로 검사합니다. 닉네임 가입, 검색 결과, 로그아웃, 재로그인, 이전 결과 조회를 확인하고 시험 계정을 삭제합니다.
 
 Supabase 연결 전에는 `.env.local`에서 `NEXT_PUBLIC_LOCAL_TEST_ACCOUNT=true`를 설정하고 로그인 화면에서 `brith` / `1234`를 사용합니다. 세션과 검색 기록은 해당 브라우저에만 저장되며, `npm run test:local-account`로 이 흐름을 검사합니다. 공개 출시 검사에서는 로컬 테스트 계정을 허용하지 않습니다.
 
