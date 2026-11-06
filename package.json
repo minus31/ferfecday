@@ -22,6 +22,7 @@
     "verify:product-ranking": "tsx scripts/verify-product-ranking.ts",
     "verify:product-content": "tsx scripts/verify-product-content.ts",
     "verify:product-sql": "tsx scripts/verify-product-sql.ts",
+    "verify:live-nickname": "npm run build:api && tsx scripts/verify-live-nickname.ts",
     "verify:api-bundle": "node scripts/verify-api-bundle.mjs",
     "verify": "npm run build:api && npm run verify:api-bundle && tsc --noEmit && npm run verify:product-ranking && npm run verify:strength-score && npm run verify:yongshin && npm run verify:detail-report && npm run verify:daewoon-ai && npm run verify:product-content && npm run verify:saju-api && npm run verify:product-sql",
     "test:e2e": "playwright test",

@@ -81,7 +81,7 @@ export default function HistoryPage() {
         <section className="surface-card space-y-4 p-6">
           <h1 className="text-3xl font-semibold">우리 가족의 이전 결과</h1>
           <p className="break-all text-sm text-muted-foreground">
-            {session?.user.email}
+            {session?.user.user_metadata?.birthdaygift_nickname || (session?.user.email === "brith@day.com" ? "brith" : "계정")}
           </p>
           <p className="text-sm leading-7 text-muted-foreground">
             같은 검색에서 열린 보고서는 모든 후보에 적용됩니다. 저장한 날짜를

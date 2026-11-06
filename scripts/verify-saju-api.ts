@@ -332,6 +332,8 @@ try {
             user_metadata: { birthdaygift_demo: true },
           })
         : Response.json({ msg: "Invalid token" }, { status: 401 });
+    if (String(url).includes("/birthdaygift_nicknames"))
+      return Response.json([{ nickname_key: "tester" }]);
     assert.ok(String(url).endsWith("/rpc/birthdaygift_session_active"));
     assert.deepEqual(JSON.parse(String(init?.body)), {
       session_id: sessionId,

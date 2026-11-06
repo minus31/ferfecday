@@ -20,7 +20,7 @@ function user(id: string, email: string) {
     aud: "authenticated",
     role: "authenticated",
     app_metadata: { provider: "email" },
-    user_metadata: {},
+    user_metadata: { birthdaygift_nickname: email === "brith@day.com" ? "brith" : email.split("@")[0] },
     created_at: new Date().toISOString(),
   };
 }
@@ -52,6 +52,15 @@ const handler = createService({
   },
   report: async (day) => buildProductReport(day),
   image: async () => null,
+  nicknameAuth: {
+    available: async (nickname) => !["brith", "parent"].includes(nickname),
+    signup: async (nickname) => nickname === "parent"
+      ? { error: "이미 사용 중인 닉네임입니다.", status: 409 }
+      : session("test-user-a", `${nickname}@example.test`),
+    login: async (nickname, password) => password === "badpass!"
+      ? { error: "닉네임 또는 비밀번호를 확인해 주세요.", status: 401 }
+      : session(nickname === "brith" ? "test-user-demo" : nickname === "other" ? "test-user-b" : "test-user-a", nickname === "brith" ? "brith@day.com" : `${nickname}@example.test`),
+  },
 });
 createServer(async (req, res) => {
   const chunks: Buffer[] = [];
@@ -118,10 +127,6 @@ createServer(async (req, res) => {
           ? "test-user-b"
           : "test-user-a";
     json(session(id, email));
-    return;
-  }
-  if (body.action === "demo-login") {
-    json(session("test-user-demo", "brith@day.com"));
     return;
   }
   const response = await handler(

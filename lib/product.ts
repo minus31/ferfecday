@@ -3,7 +3,7 @@ import type { FriendlyReportSection } from "./saju/integrated-report";
 
 export const SUPPORT_EMAIL = "rouf____@naver.com";
 export const REPORT_PRICE = 3900;
-export const POLICY_VERSION = "2026-09-17";
+export const POLICY_VERSION = "2026-11-06";
 export const REPORT_VERSION = "product-v5";
 export const SECTION_TOPICS = [
   ["core", "sparkles", "타고난 기질과 삶의 바탕"],

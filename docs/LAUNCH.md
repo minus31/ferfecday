@@ -4,7 +4,7 @@
 
 ## 로컬 테스트 계정
 
-Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLIC_LOCAL_TEST_ACCOUNT=true`를 설정합니다. 기존 로그인 화면에서 `brith@day.com` / `1234`를 입력하면 로그인되며, 세션과 검색은 브라우저 `localStorage`에만 최대 20건 보관됩니다. 테스트 계정에는 전체 해설 권한이 적용됩니다. Supabase, 보호 API, OpenAI 이미지, 실제 결제는 호출하지 않습니다. 환경 변수를 바꾼 뒤 개발 서버를 다시 시작해야 합니다.
+Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLIC_LOCAL_TEST_ACCOUNT=true`를 설정합니다. 로그인 화면에서 `brith` / `1234`를 입력하면 로그인되며, 세션과 검색은 브라우저 `localStorage`에만 최대 20건 보관됩니다. 테스트 계정에는 전체 해설 권한이 적용됩니다. Supabase, 보호 API, OpenAI 이미지, 실제 결제는 호출하지 않습니다. 환경 변수를 바꾼 뒤 개발 서버를 다시 시작해야 합니다.
 
 이 로컬 계정은 인증, 계정 간 격리, 서버 저장, 이메일, 실제 AI 생성 검증을 대체하지 않습니다. `npm run check:launch`는 로컬 테스트 계정이 켜져 있으면 실패합니다. 공개 배포 전 값을 반드시 `false`로 바꾸고 실환경 검증을 완료합니다. 운영용 Supabase 테스트 계정 절차는 아래 2절처럼 별도로 검증합니다.
 
@@ -13,7 +13,7 @@ Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLI
 - 사용자 지정 조직에 `birthdaygift` 전용 프로젝트를 생성합니다. 기존 타 서비스 프로젝트는 사용하지 않습니다. 권장 저장 지역은 서울이며, 실제 프로젝트 선택에 맞춰 방침의 국가와 위탁 조건을 확정합니다.
 - `supabase/migrations/20261007231004_product_initial.sql`과 `20261007231117_product_hardening.sql`이 ServiceAX에 적용되어 있습니다. 원격 마이그레이션 버전에 맞춘 파일이므로 다른 프로젝트에는 CLI로 순서대로 적용합니다.
 - `.env.example`의 Supabase URL과 공개 publishable 키를 빌드 환경에, secret 키는 Vercel 서버 환경에만 설정합니다. 기존 anon, service_role 키는 코드에서 이전 설정 호환 용도로만 인식합니다.
-- 이메일 가입, 이메일 확인을 활성화하고 비밀번호 최소 길이를 8자 이상으로 설정합니다. SMTP 발신 도메인, 템플릿, 발송 한도, 스팸 폴더 도착 여부를 검증합니다.
+- `20261106000000_nickname_accounts.sql`을 적용합니다. 신규 계정은 닉네임 중복 확인 후 내부 계정 주소로 인증하므로 가입 확인 메일은 사용하지 않습니다. 비밀번호 최소 길이는 8자 이상으로 설정합니다.
 - Auth Site URL은 실제 웹 도메인, redirect allow list에는 웹과 토스의 `/account` 경로를 정확히 등록합니다. PKCE는 확인 링크를 가입한 브라우저에서 여는 것이 기본입니다. 다른 기기에서 확인했다면 원래 화면으로 돌아와 로그인합니다.
 - 현재 ServiceAX의 액세스 토큰은 1시간으로 설정돼 있으며 갱신 토큰 재사용 탐지가 켜져 있습니다. 서버는 JWT 검증뿐 아니라 `auth.sessions` 존재와 생성 후 30일 이내 조건을 매번 검사합니다. 로그아웃된 세션과 만료된 세션은 거절합니다.
 - 저장 데이터 테이블은 anon/authenticated 직접 읽기, 쓰기가 금지되어야 합니다. `service_role`만 접근합니다. 공용 삽화 버킷은 공개 읽기, 업로드는 서버 전용입니다.
@@ -25,7 +25,7 @@ Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLI
 
 1. 보안 난수 도구로 24자 이상 임의의 `TEST_ACCOUNT_PASSWORD`를 생성해 로컬과 서버의 비밀 설정에 저장합니다. 비밀 값은 출력하거나 커밋하지 않습니다.
 2. `npm run setup:test-account`로 `brith@day.com`을 생성합니다. 기존 일반 계정이라면 자동으로 관리자 권한을 부여하지 않고 중단합니다.
-3. 서버에 `TEST_ACCOUNT_ENABLED=true`를 설정합니다. 사용자는 `brith@day.com` / `1234`로 로그인하며 결제 없이 모든 해설을 봅니다.
+3. 서버에 `TEST_ACCOUNT_ENABLED=true`를 설정합니다. 사용자는 `brith` / `1234`로 로그인하며 결제 없이 모든 해설을 봅니다.
 4. 이 계정은 공개된 공용 테스트 계정입니다. 실제 개인 정보나 가족 기록을 입력하지 않습니다. 공개 출시 시 비활성화를 권장합니다. 비활성화하면 기존 세션도 더 이상 결제 예외를 받지 않습니다.
 
 ## 3. Vercel과 OpenAI
@@ -45,7 +45,7 @@ Supabase 연결 전 화면을 검수하려면 로컬 `.env.local`에 `NEXT_PUBLI
 - AI 해설에 이메일과 계정 정보는 보내지 않습니다. 다만 사주 구성과 시기 정보도 재식별 가능성을 고려해 국외이전 안내에 포함했습니다. AI 사전 고지, 해설과 이미지의 AI 표시를 유지합니다.
 - 별도 체크박스로 서비스 약관과 개인정보 수집, 국외이전을 확인합니다. 동의 기록에는 정책 버전과 시점이 저장됩니다. 정책의 핵심 처리 조건이 바뀌면 버전을 올리고 재동의를 받아야 합니다.
 - 카메라, 연락처, 사진, 기기 위치 권한은 요청하지 않습니다. 마케팅 동의는 수집하지 않습니다.
-- 지원 메일은 `rouf____@naver.com`입니다. 복구 요청은 본인 확인 후 Supabase의 공식 비밀번호 복구 절차로 처리하며 이메일로 비밀번호를 받거나 평문 비밀번호를 전달하지 않습니다.
+- 지원 메일은 `rouf____@naver.com`입니다. 실제 이메일을 수집하지 않으므로 자동 비밀번호 복구는 제공하지 않습니다. 복구 요청은 별도의 본인 확인 절차가 마련될 때까지 처리할 수 없으며, 비밀번호를 메일로 받거나 평문으로 전달하지 않습니다.
 - 정책 검토 후 `PRIVACY_REVIEW_COMPLETE=true`, `npm run check:launch`를 실행합니다. 설정 검사는 법률 적합성을 보증하지 않습니다. 실제 제공 방식과 계약에 대한 검토가 필요합니다.
 
 확인한 공식 근거: [AI기본법](https://www.law.go.kr/LSW/lsInfoP.do?ancYnChk=&chrClsCd=010202&efYd=20260122&lsiSeq=282791&urlMode=lsInfoP)의 투명성 의무, [개인정보 보호법 국외이전](https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1029331979), [OpenAI API 데이터 처리](https://platform.openai.com/docs/guides/your-data), [Supabase 세션](https://supabase.com/docs/guides/auth/sessions), [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security). 사용자 제공 과태료 요약을 그대로 법률 보증으로 사용하지 않습니다.

@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
 test("로그인 오류 안내와 존재하지 않는 기록 접근 차단", async ({ page }) => {
   await page.goto("/account");
-  await page.getByLabel("이메일", { exact: true }).fill("other@example.test");
+  await page.getByLabel("닉네임", { exact: true }).fill("other");
   await page.getByLabel("비밀번호", { exact: true }).fill("badpass!");
   await page.getByRole("button", { name: "로그인", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("이메일 또는 비밀번호");
+  await expect(page.getByRole("status")).toContainText("닉네임 또는 비밀번호");
   await page.getByLabel("비밀번호", { exact: true }).fill("safe-pass-1234");
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/history/);
@@ -23,7 +23,9 @@ test("가입, 과거 검색, Top10, 무료 경계, 결제 준비, 이전 결과�
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`/account?mode=signup&${searchQuery}`);
-  await page.getByLabel("이메일", { exact: true }).fill("parent@example.test");
+  await page.getByLabel("닉네임", { exact: true }).fill("newparent");
+  await page.getByRole("button", { name: "닉네임 중복 확인" }).click();
+  await expect(page.getByText("사용할 수 있는 닉네임입니다.")).toBeVisible();
   await page.getByLabel("비밀번호", { exact: true }).fill("safe-pass-1234");
   await page.getByRole("checkbox").nth(0).check();
   await page.getByRole("checkbox").nth(1).check();
@@ -133,11 +135,12 @@ test("테스트 계정은 모든 장을 보고 홈에서는 과거 날짜를 선
   await grid.getByRole("button", { name: /2024년 2월 29일/ }).click();
   await page.getByRole("button", { name: "길일 찾기", exact: true }).click();
   await expect(page).toHaveURL(/\/account\?mode=signup/);
-  await page.getByLabel("이메일", { exact: true }).fill("brith@day.com");
+  await page.getByRole("button", { name: "이미 계정이 있어요, 로그인" }).click();
+  await page.getByLabel("닉네임", { exact: true }).fill("brith");
   await page.getByLabel("비밀번호", { exact: true }).fill("1234");
   await page.getByRole("checkbox").nth(0).check();
   await page.getByRole("checkbox").nth(1).check();
-  await page.getByRole("button", { name: "가입하고 계속하기" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Best 10" })).toBeVisible();
   await page.getByRole("button", { name: "상세 보고서 보기" }).first().click();
   const dialog = page.getByRole("dialog");
@@ -148,4 +151,11 @@ test("테스트 계정은 모든 장을 보고 홈에서는 과거 날짜를 선
   ).toBeVisible();
   await dialog.getByText("적성과 직업, 일하는 환경", { exact: true }).click();
   await expect(dialog.getByText(/조사, 설계, 제작, 설명, 수정/)).toBeVisible();
+});
+test("닉네임 중복 확인과 가입 차단", async ({ page }) => {
+  await page.goto("/account?mode=signup");
+  await page.getByLabel("닉네임", { exact: true }).fill("parent");
+  await page.getByRole("button", { name: "닉네임 중복 확인" }).click();
+  await expect(page.getByText("이미 사용 중인 닉네임입니다.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "가입하고 계속하기" })).toBeDisabled();
 });

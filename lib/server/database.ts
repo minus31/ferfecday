@@ -71,13 +71,22 @@ export async function authenticate(request: Request): Promise<Account | null> {
     }),
   );
   if (!active) return null;
+  const demo =
+    process.env.TEST_ACCOUNT_ENABLED === "true" &&
+    data.user.email === "brith@day.com" &&
+    data.user.app_metadata.birthdaygift_demo === true;
+  if (!demo) {
+    const { data: nickname, error: nicknameError } = await db
+      .from("birthdaygift_nicknames")
+      .select("nickname_key")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+    if (nicknameError || !nickname) return null;
+  }
   return {
     id: data.user.id,
     email: data.user.email || "",
-    demo:
-      process.env.TEST_ACCOUNT_ENABLED === "true" &&
-      data.user.email === "brith@day.com" &&
-      data.user.app_metadata.birthdaygift_demo === true,
+    demo,
   };
 }
 

@@ -15,8 +15,8 @@ test("로컬 테스트 계정으로 로그인해 결과와 이전 기록을 확�
   await page.goto(
     "/account?mode=signup&from=2024-02-28&to=2024-03-01&gender=F&location=서울",
   );
-  await expect(page.getByLabel("이메일", { exact: true })).toHaveValue(
-    "brith@day.com",
+  await expect(page.getByLabel("닉네임", { exact: true })).toHaveValue(
+    "brith",
   );
   await expect(page.getByLabel("비밀번호", { exact: true })).toHaveValue(
     "1234",
@@ -37,7 +37,7 @@ test("로컬 테스트 계정으로 로그인해 결과와 이전 기록을 확�
   await expect(dialog.getByRole("button", { name: /3,900원/ })).toHaveCount(0);
 
   await page.goto("/history");
-  await expect(page.getByText("brith@day.com")).toBeVisible();
+  await expect(page.getByText("brith", { exact: true })).toBeVisible();
   await expect(page.getByText("2024-02-28 ~ 2024-03-01")).toBeVisible();
   await page.reload();
   await expect(page.getByText("2024-02-28 ~ 2024-03-01")).toBeVisible();

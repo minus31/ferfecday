@@ -32,7 +32,8 @@ function AccountForm() {
   const [signup, setSignup] = React.useState(
     params.get("mode") === "signup" && !localTestAccount,
   );
-  const [email, setEmail] = React.useState(localCredentials?.email || "");
+  const [nickname, setNickname] = React.useState(localCredentials ? "brith" : "");
+  const [availability, setAvailability] = React.useState<"idle" | "checking" | "available" | "taken">("idle");
   const [password, setPassword] = React.useState(
     localCredentials?.password || "",
   );
@@ -93,62 +94,33 @@ function AccountForm() {
         await proceed();
         return;
       }
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedNickname = nickname.trim().normalize("NFC").toLowerCase();
+      if (!/^[a-z0-9_가-힣]{2,16}$/u.test(normalizedNickname))
+        throw new Error("닉네임은 한글, 영문 소문자, 숫자, 밑줄을 사용해 2~16자로 입력해 주세요.");
       if (localTestAccount) {
-        if (!authenticateLocalTestAccount(normalizedEmail, password))
+        if (!authenticateLocalTestAccount(localCredentials?.email || "", password) || normalizedNickname !== "brith")
           throw new Error("로컬 테스트 계정 정보를 확인해 주세요.");
       } else {
         const client = getBrowserAuth();
-        if (normalizedEmail === "brith@day.com" && password === "1234") {
-          const response = await fetch(getServiceEndpoint(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "demo-login",
-              email: normalizedEmail,
-              password,
-            }),
-          });
-          const tokens = await response.json();
-          if (!response.ok)
-            throw new Error(
-              tokens.error || "테스트 계정에 로그인할 수 없습니다.",
-            );
-          const { error } = await client.auth.setSession(tokens);
-          if (error) throw error;
-        } else if (signup) {
+        if (signup) {
           if (!consent || !transfer)
             throw new Error("필수 동의 항목을 확인해 주세요.");
           if (password.length < 8)
             throw new Error("비밀번호는 8자 이상 입력해 주세요.");
-          const { data, error } = await client.auth.signUp({
-            email: normalizedEmail,
-            password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/account?verified=1`,
-            },
-          });
-          if (error)
-            throw new Error(
-              "가입을 완료하지 못했습니다. 이메일과 비밀번호를 확인하거나 로그인해 주세요.",
-            );
-          if (!data.session) {
-            setMessage(
-              "이메일로 보낸 확인 링크를 열어 주세요. 이미 가입한 이메일이라면 로그인해 주세요. 확인 후 이 화면에서 검색을 이어갈 수 있습니다.",
-            );
-            setPassword("");
-            return;
-          }
-        } else {
-          const { error } = await client.auth.signInWithPassword({
-            email: normalizedEmail,
-            password,
-          });
-          if (error)
-            throw new Error(
-              "이메일 또는 비밀번호를 확인해 주세요. 가입 시 보낸 이메일 인증도 완료해 주세요.",
-            );
         }
+        const response = await fetch(getServiceEndpoint(), {
+          method: "POST", cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: signup ? "account-signup" : "account-login",
+            nickname: normalizedNickname, password,
+            ...(signup ? { policyVersion: POLICY_VERSION } : {}),
+          }),
+        });
+        const tokens = await response.json();
+        if (!response.ok) throw new Error(tokens.error || "계정 요청을 완료하지 못했습니다.");
+        const { error } = await client.auth.setSession(tokens);
+        if (error) throw new Error("로그인 세션을 저장하지 못했습니다. 다시 시도해 주세요.");
       }
       setPassword("");
       if (signup) await serviceRequest("consent", { version: POLICY_VERSION });
@@ -180,28 +152,45 @@ function AccountForm() {
             {pending
               ? `${pending.from} ~ ${pending.to}의 검색 조건을 준비했어요. `
               : ""}
-            이메일과 비밀번호로 저장된 결과를 다시 볼 수 있습니다.
+            닉네임과 비밀번호로 저장된 결과를 다시 볼 수 있습니다. 이메일 인증은 필요하지 않습니다.
           </p>
         </div>
         <form onSubmit={submit} className="space-y-5">
           {session ? (
             <p className="break-all text-sm">
-              {session.user.email} 계정으로 로그인되어 있습니다.
+              {session.user.user_metadata?.birthdaygift_nickname || (session.user.email === "brith@day.com" ? "brith" : "계정")} 닉네임으로 로그인되어 있습니다.
             </p>
           ) : (
             <>
               <label className="block text-sm font-medium">
-                이메일
+                닉네임
                 <input
                   className="mt-2 w-full rounded-xl border bg-background p-3"
-                  type="email"
-                  autoComplete="email"
+                  type="text"
+                  autoComplete="username"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  maxLength={254}
+                  value={nickname}
+                  onChange={(e) => { setNickname(e.target.value); setAvailability("idle"); }}
+                  maxLength={16}
                 />
               </label>
+              {signup && !localTestAccount && (
+                <div className="-mt-3 text-xs">
+                  <button type="button" className="underline" disabled={busy || availability === "checking"} onClick={async () => {
+                    const key = nickname.trim().normalize("NFC").toLowerCase();
+                    if (!/^[a-z0-9_가-힣]{2,16}$/u.test(key)) { setMessage("닉네임은 한글, 영문 소문자, 숫자, 밑줄을 사용해 2~16자로 입력해 주세요."); return; }
+                    setAvailability("checking"); setMessage("");
+                    try {
+                      const response = await fetch(getServiceEndpoint(), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "nickname-check", nickname: key }) });
+                      const result = await response.json();
+                      if (!response.ok) throw new Error(result.error || "중복 확인에 실패했습니다.");
+                      setAvailability(result.available ? "available" : "taken");
+                    } catch (error) { setAvailability("idle"); setMessage((error as Error).message); }
+                  }}>닉네임 중복 확인</button>
+                  {availability === "available" && <span role="status" className="ml-2">사용할 수 있는 닉네임입니다.</span>}
+                  {availability === "taken" && <span role="status" className="ml-2">이미 사용 중인 닉네임입니다.</span>}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium" htmlFor="password">
                   비밀번호
@@ -247,7 +236,7 @@ function AccountForm() {
                   <Link href="/privacy" target="_blank" className="underline">
                     개인정보 수집, 이용
                   </Link>
-                  에 동의합니다. 이메일, 검색 조건, 결과를 계정 관리와 결과
+                  에 동의합니다. 닉네임, 검색 조건, 결과를 계정 관리와 결과
                   재조회에 사용하며 탈퇴 시 삭제합니다. 동의를 거부할 수 있으나
                   계정과 검색 저장은 이용할 수 없습니다.
                 </span>
@@ -290,7 +279,7 @@ function AccountForm() {
             className="w-full"
             size="lg"
             disabled={
-              !ready || busy || (!!needsConsent && (!consent || !transfer))
+              !ready || busy || (signup && !localTestAccount && availability !== "available") || (!!needsConsent && (!consent || !transfer))
             }
           >
             {busy
@@ -307,6 +296,7 @@ function AccountForm() {
             className="text-sm text-primary underline"
             onClick={() => {
               setSignup(!signup);
+              setAvailability("idle");
               setMessage("");
             }}
           >
@@ -329,7 +319,7 @@ function AccountForm() {
           <a className="underline" href={`mailto:${SUPPORT_EMAIL}`}>
             {SUPPORT_EMAIL}
           </a>
-          로 가입 이메일과 함께 문의해 주세요. 비밀번호 자체는 보내지 마세요.
+          로 닉네임과 함께 문의해 주세요. 비밀번호 자체는 보내지 마세요. 이메일을 등록하지 않으므로 자동 재설정은 제공되지 않습니다.
         </p>
       </section>
     </main>

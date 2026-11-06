@@ -16,6 +16,7 @@ import {
   type Database,
 } from "./database";
 import { generateReport, generateImage, ImageGenerationError } from "./generation";
+import { loginNickname, nicknameAvailable, normalizeNickname, signupNickname } from "./nickname-auth";
 
 export function isAllowedOrigin(origin: string | null) {
   if (!origin) return true;
@@ -88,6 +89,11 @@ export interface ServiceDependencies {
   authenticate: (request: Request) => Promise<Account | null>;
   report: typeof generateReport;
   image: typeof generateImage;
+  nicknameAuth?: {
+    available: typeof nicknameAvailable;
+    signup: typeof signupNickname;
+    login: typeof loginNickname;
+  };
 }
 export function createService(deps: ServiceDependencies) {
   return async function handle(request: Request): Promise<Response> {
@@ -123,47 +129,28 @@ export function createService(deps: ServiceDependencies) {
       }
       if (!body || typeof body !== "object" || Array.isArray(body))
         throw new HttpError(400, "요청 형식을 확인해 주세요.");
-      if (body.action === "demo-login") {
-        if (
-          process.env.TEST_ACCOUNT_ENABLED !== "true" ||
-          !process.env.TEST_ACCOUNT_PASSWORD ||
-          body.email !== "brith@day.com" ||
-          body.password !== "1234"
-        )
-          throw new HttpError(401, "이메일 또는 비밀번호를 확인해 주세요.");
+      if (["nickname-check", "account-signup", "account-login"].includes(String(body.action))) {
+        const nickname = normalizeNickname(body.nickname);
+        if (!nickname) throw new HttpError(400, "닉네임은 한글, 영문 소문자, 숫자, 밑줄을 사용해 2~16자로 입력해 주세요.");
         const db = deps.database();
-        const address =
-          request.headers.get("x-vercel-forwarded-for") ||
-          request.headers.get("x-forwarded-for") ||
-          "unknown";
-        if (
-          !(await db.rateLimit(
-            `demo:${createHash("sha256").update(address).digest("hex")}`,
-            10,
-            900,
-          ))
-        )
-          throw new HttpError(429, "잠시 후 다시 로그인해 주세요.");
-        const { createClient } = await import("@supabase/supabase-js");
-        const auth = createClient(
-          process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!,
-          { auth: { persistSession: false, autoRefreshToken: false } },
-        );
-        const { data, error } = await auth.auth.signInWithPassword({
-          email: "brith@day.com",
-          password: process.env.TEST_ACCOUNT_PASSWORD,
-        });
-        if (
-          error ||
-          !data.session ||
-          data.user?.app_metadata.birthdaygift_demo !== true
-        )
-          throw new HttpError(401, "테스트 계정이 준비되지 않았습니다.");
-        return json({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
+        const address = request.headers.get("x-vercel-forwarded-for") || request.headers.get("x-forwarded-for") || "unknown";
+        if (!(await db.rateLimit(`account:${createHash("sha256").update(address).digest("hex")}`, 30, 900)))
+          throw new HttpError(429, "요청이 많습니다. 잠시 후 다시 시도해 주세요.");
+        const auth = deps.nicknameAuth || { available: nicknameAvailable, signup: signupNickname, login: loginNickname };
+        if (body.action === "nickname-check") return json({ available: await auth.available(nickname) });
+        if (typeof body.password !== "string" || body.password.length > 128)
+          throw new HttpError(400, "비밀번호를 확인해 주세요.");
+        if (body.action === "account-signup") {
+          if (body.policyVersion !== POLICY_VERSION || body.password.length < 8)
+            throw new HttpError(400, "필수 동의와 8자 이상 비밀번호를 확인해 주세요.");
+          if (nickname === "brith") throw new HttpError(409, "이미 사용 중인 닉네임입니다.");
+          const result = await auth.signup(nickname, body.password);
+          if ("error" in result) throw new HttpError(result.status || 400, result.error || "계정을 만들지 못했습니다.");
+          return json(result);
+        }
+        const result = await auth.login(nickname, body.password);
+        if ("error" in result) throw new HttpError(result.status || 401, result.error || "로그인하지 못했습니다.");
+        return json(result);
       }
       const account = await deps.authenticate(request);
       if (!account)

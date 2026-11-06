@@ -4,6 +4,7 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   output: "export",
+  distDir: process.env.NEXT_PUBLIC_LOCAL_TEST_ACCOUNT === "true" ? ".next-local-test" : ".next",
   webpack(config, { dev }) {
     config.resolve.alias["local-test-account-runtime"] = path.resolve(
       process.cwd(),

@@ -11,10 +11,16 @@ const sql = await readFile(
 );
 // PGlite에서는 별도 확장 없이 내장 UUID 함수를 사용해 동일 SQL을 검증한다.
 await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
+await db.exec(await readFile(
+  new URL("../supabase/migrations/20261106000000_nickname_accounts.sql", import.meta.url),
+  "utf8",
+));
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222",
   s = "33333333-3333-4333-8333-333333333333";
 await db.query("insert into auth.users(id) values($1),($2)", [a, b]);
+await db.query("insert into public.birthdaygift_nicknames(nickname_key,user_id,internal_email) values('부모', $1, 'internal-1@example.test')", [a]);
+await assert.rejects(db.query("insert into public.birthdaygift_nicknames(nickname_key,user_id,internal_email) values('부모', $1, 'internal-2@example.test')", [b]));
 await db.query("insert into auth.sessions values($1,$2,now())", [s, a]);
 async function scalar(statement: string, args: unknown[] = []) {
   return (await db.query<Record<string, unknown>>(statement, args)).rows[0]
@@ -91,6 +97,7 @@ for (const role of ["anon", "authenticated"]) {
     "orders",
     "consents",
     "images",
+    "nicknames",
   ]) {
     await assert.rejects(
       db.query(`select * from public.birthdaygift_${table}`),
@@ -114,6 +121,7 @@ await db.query(
   [s, a],
 );
 await db.query("delete from auth.users where id=$1", [a]);
+assert.equal(await scalar("select count(*)::integer result from public.birthdaygift_nicknames"), 0);
 const retained = (
   await db.query<{ user_id: string | null; search_id: string | null }>(
     "select user_id,search_id from public.birthdaygift_orders",
